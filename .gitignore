@@ -11,6 +11,8 @@ lerna-debug.log*
 node_modules/
 
 # Build and Cache
+dev-dist/
+.build/
 dist/
 dist-ssr/
 coverage/
