@@ -5,7 +5,7 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
+  base: '/',
   plugins: [
     react(),
     VitePWA({
@@ -14,11 +14,11 @@ export default defineConfig({
       manifestFilename: 'manifest.webmanifest',
       includeAssets: [
         'favicon.ico',
-        'favicon.svg', 
+        'favicon.svg',
         'favicon-96x96.png',
         'apple-touch-icon.png',
         'web-app-manifest-192x192.png',
-        'web-app-manifest-512x512.png'
+        'web-app-manifest-512x512.png',
       ],
       manifest: {
         name: 'Bookmark Manager',
@@ -27,50 +27,50 @@ export default defineConfig({
         theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
-        orientation: 'portrait-primary',
-        scope: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
-        start_url: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
+        orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
         share_target: {
-          action: process.env.NODE_ENV === 'production' ? '/bookmark/share' : '/share',
+          action: '/share',
           method: 'GET',
           enctype: 'application/x-www-form-urlencoded',
           params: {
             title: 'title',
             text: 'text',
-            url: 'url'
-          }
+            url: 'url',
+          },
         },
         icons: [
           {
-            src: process.env.NODE_ENV === 'production' ? '/bookmark/favicon-96x96.png' : '/favicon-96x96.png',
+            src: '/favicon-96x96.png',
             sizes: '96x96',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
-            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
+            src: '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'maskable'
+            purpose: 'maskable',
           },
           {
-            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
+            src: '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any',
           },
           {
-            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
+            src: '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable'
+            purpose: 'maskable',
           },
           {
-            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
+            src: '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any'
-          }
-        ]
+            purpose: 'any',
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
@@ -82,23 +82,23 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
       devOptions: {
-        enabled: true
-      }
-    })
+        enabled: true,
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  }
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 });
