@@ -1,78 +1,76 @@
-import path from 'path';
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
+  base: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
   plugins: [
     react(),
-    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifestFilename: 'manifest.webmanifest',
       includeAssets: [
         'favicon.ico',
-        'favicon.svg',
+        'favicon.svg', 
         'favicon-96x96.png',
         'apple-touch-icon.png',
         'web-app-manifest-192x192.png',
-        'web-app-manifest-512x512.png',
+        'web-app-manifest-512x512.png'
       ],
       manifest: {
-        name: 'Stash - Bookmark Manager',
-        short_name: 'Stash',
-        description:
-          'Never lose a link! Stash offers a secure, offline-first bookmarking experience. Save, organize, and sync your collections easily on any device.',
-        theme_color: '#1447e6',
+        name: 'Bookmark Manager',
+        short_name: 'Bookmark',
+        description: 'Mobile-first bookmark management PWA with offline support',
+        theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
-        scope: '/',
-        start_url: '/',
+        scope: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
+        start_url: process.env.NODE_ENV === 'production' ? '/bookmark/' : '/',
         share_target: {
-          action: '/share',
+          action: process.env.NODE_ENV === 'production' ? '/bookmark/share' : '/share',
           method: 'GET',
           enctype: 'application/x-www-form-urlencoded',
           params: {
             title: 'title',
             text: 'text',
-            url: 'url',
-          },
+            url: 'url'
+          }
         },
         icons: [
           {
-            src: '/favicon-96x96.png',
+            src: process.env.NODE_ENV === 'production' ? '/bookmark/favicon-96x96.png' : '/favicon-96x96.png',
             sizes: '96x96',
-            type: 'image/png',
+            type: 'image/png'
           },
           {
-            src: '/web-app-manifest-192x192.png',
+            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'maskable',
+            purpose: 'maskable'
           },
           {
-            src: '/web-app-manifest-192x192.png',
+            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any',
+            purpose: 'any'
           },
           {
-            src: '/web-app-manifest-512x512.png',
+            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable',
+            purpose: 'maskable'
           },
           {
-            src: '/web-app-manifest-512x512.png',
+            src: process.env.NODE_ENV === 'production' ? '/bookmark/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any',
-          },
-        ],
+            purpose: 'any'
+          }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
@@ -84,23 +82,23 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
               },
               cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
       },
       devOptions: {
-        enabled: true,
-      },
-    }),
+        enabled: true
+      }
+    })
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+      '@': path.resolve(__dirname, './src')
+    }
+  }
 });

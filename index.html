@@ -1,42 +1,38 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-  <!-- Mobile-First Meta Tags -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Bookmark">
-  <meta name="theme-color" content="#1447e6">
-
-  <!-- PWA Meta Tags -->
-  <meta name="description"
-    content="Never lose a link! Stash offers a secure, offline-first bookmarking experience. Save, organize, and sync your collections easily on any device.">
-  <!-- Manifest is automatically injected by vite-plugin-pwa -->
-
-  <title>Stash</title>
-
-  <!-- Handle client-side routing for GitHub Pages -->
-  <script>
-    // Check for redirect from 404.html
-    (function () {
-      var redirect = sessionStorage.redirect;
-      delete sessionStorage.redirect;
-      if (redirect && redirect !== location.href) {
-        history.replaceState(null, null, redirect);
-      }
-    })();
-  </script>
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- Mobile-First Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bookmark">
+    <meta name="theme-color" content="#6366f1">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Mobile-first bookmark management PWA with offline support">
+    <!-- Manifest is automatically injected by vite-plugin-pwa -->
+    
+    <title>Bookmark Manager</title>
+    
+    <!-- Handle client-side routing for GitHub Pages -->
+    <script>
+      // Check for redirect from 404.html
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
