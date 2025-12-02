@@ -12,7 +12,7 @@ import './index.css';
 initDB().catch(console.error);
 
 // Set basename for GitHub Pages deployment
-const basename = import.meta.env.MODE === 'production' ? '/bookmark' : '/';
+const basename = '/';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
