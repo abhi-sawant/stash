@@ -4,7 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 // https://vitejs.dev/config/
+// You will need to use the commented out paths if you want to deploy this on GitHub Pages
 export default defineConfig({
+  // base: process.env.NODE_ENV === 'production' ? '/stash/' : '/',
   base: '/',
   plugins: [
     react(),
@@ -27,10 +29,13 @@ export default defineConfig({
         theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'portrait-primary',
+        // scope: process.env.NODE_ENV === 'production' ? '/stash/' : '/',
+        // start_url: process.env.NODE_ENV === 'production' ? '/stash/' : '/',
         scope: '/',
         start_url: '/',
         share_target: {
+          // action: process.env.NODE_ENV === 'production' ? '/stash/share' : '/share',
           action: '/share',
           method: 'GET',
           enctype: 'application/x-www-form-urlencoded',
@@ -42,29 +47,34 @@ export default defineConfig({
         },
         icons: [
           {
+            // src: process.env.NODE_ENV === 'production' ? '/stash/favicon-96x96.png' : '/favicon-96x96.png',
             src: '/favicon-96x96.png',
             sizes: '96x96',
             type: 'image/png',
           },
           {
+            // src: process.env.NODE_ENV === 'production' ? '/stash/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
             src: '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'maskable',
           },
           {
+            // src: process.env.NODE_ENV === 'production' ? '/stash/web-app-manifest-192x192.png' : '/web-app-manifest-192x192.png',
             src: '/web-app-manifest-192x192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
+            // src: process.env.NODE_ENV === 'production' ? '/stash/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
             src: '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
           },
           {
+            // src: process.env.NODE_ENV === 'production' ? '/stash/web-app-manifest-512x512.png' : '/web-app-manifest-512x512.png',
             src: '/web-app-manifest-512x512.png',
             sizes: '512x512',
             type: 'image/png',

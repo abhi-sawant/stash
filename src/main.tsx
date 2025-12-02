@@ -12,6 +12,8 @@ import './index.css';
 initDB().catch(console.error);
 
 // Set basename for GitHub Pages deployment
+// You will need to use this if you are going to host this on GitHub Pages
+// const basename = import.meta.env.MODE === 'production' ? '/stash' : '/';
 const basename = '/';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
