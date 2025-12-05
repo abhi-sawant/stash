@@ -4,7 +4,6 @@ import { useNavigationHandler } from '@/hooks/useNavigationHandler';
 import { BookmarkGrid } from '@/components/bookmarks/BookmarkGrid';
 import { PullToRefresh } from '@/components/mobile/PullToRefresh';
 import { BottomSheet } from '@/components/mobile/BottomSheet';
-import { ConfirmDialog } from '@/components/mobile/ConfirmDialog';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import AddBookmarkSheet from '@/components/bookmarks/AddBookmarkSheet';
 import MoveToCollectionSheet from '@/components/bookmarks/MoveToCollectionSheet';
@@ -18,7 +17,7 @@ export default function HomePage() {
   const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(null);
 
   // Enable native app-like back button behavior (exit app from home)
-  const { shouldShowExitConfirm, confirmExit, cancelExit } = useNavigationHandler({
+  useNavigationHandler({
     isHomePage: true,
   });
 
@@ -73,18 +72,6 @@ export default function HomePage() {
           <MoveToCollectionSheet bookmark={selectedBookmark} onClose={moveSheet.close} />
         )}
       </BottomSheet>
-
-      {/* Exit Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={shouldShowExitConfirm}
-        onClose={cancelExit}
-        onConfirm={confirmExit}
-        title="Exit App"
-        message="Are you sure you want to exit?"
-        confirmText="Exit"
-        cancelText="Stay"
-        variant="info"
-      />
     </>
   );
 }

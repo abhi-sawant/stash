@@ -97,14 +97,9 @@ export function useNavigationHandler(config: NavigationConfig = {}) {
       event.preventDefault();
 
       if (isHomePage) {
-        // On home page, show exit confirmation
-        if (onShowExitConfirm) {
-          onShowExitConfirm();
-        } else {
-          setShouldShowExitConfirm(true);
-        }
-        // Push a new state to prevent immediate exit
-        window.history.pushState(null, '', location.pathname);
+        // On home page, exit the app directly without confirmation
+        // Do nothing - let the browser handle the back navigation naturally
+        return;
       } else {
         // For other pages, navigate to parent
         const destination = getBackDestination();
@@ -112,8 +107,10 @@ export function useNavigationHandler(config: NavigationConfig = {}) {
       }
     };
 
-    // Push a state to enable popstate interception
-    window.history.pushState(null, '', location.pathname);
+    // Only push state for non-home pages to enable popstate interception
+    if (!isHomePage) {
+      window.history.pushState(null, '', location.pathname);
+    }
 
     window.addEventListener('popstate', handlePopState);
 
