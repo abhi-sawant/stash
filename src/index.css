@@ -3,20 +3,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
-  font-family: ReadexPro;
+  font-family: Playpen;
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
-  src: url('/ReadexPro.woff2') format('woff2');
-}
-
-body {
-  letter-spacing: 0.015em;
+  src: url('/Playpen.woff2') format('woff2');
 }
 
 @theme inline {
   --font-sans:
-    ReadexPro, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell,
+    Playpen, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell,
     Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
