@@ -3,8 +3,10 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import 'react-native-reanimated'
 
+import UpdatePrompt from '@/components/UpdatePrompt'
 import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
 import { useBackgroundSync } from '@/hooks/use-background-sync'
+import { useUpdateChecker } from '@/hooks/use-update-checker'
 import { AuthProvider } from '../lib/auth-context'
 import { BookmarksProvider } from '../lib/context'
 
@@ -16,6 +18,8 @@ function AppShell() {
   const colorScheme = useAppColorScheme()
   // Automatically uploads a backup once every 24 h when the user is signed in
   useBackgroundSync()
+  const { updateInfo, dismissUpdate, clearUpdateInfo } = useUpdateChecker()
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
@@ -27,6 +31,13 @@ function AppShell() {
         <Stack.Screen name='auth' options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      {updateInfo && (
+        <UpdatePrompt
+          updateInfo={updateInfo}
+          onDismiss={clearUpdateInfo}
+          onSkipVersion={() => dismissUpdate(updateInfo.latestVersion)}
+        />
+      )}
     </ThemeProvider>
   )
 }

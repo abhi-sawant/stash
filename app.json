@@ -2,7 +2,7 @@
   "expo": {
     "name": "Stash",
     "slug": "stash",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
     "scheme": "stash",
@@ -29,20 +29,7 @@
               "mimeType": "text/plain"
             }
           ],
-          "category": [
-            "android.intent.category.DEFAULT"
-          ]
-        },
-        {
-          "action": "android.intent.action.SEND",
-          "data": [
-            {
-              "mimeType": "text/plain"
-            }
-          ],
-          "category": [
-            "android.intent.category.DEFAULT"
-          ]
+          "category": ["android.intent.category.DEFAULT"]
         }
       ],
       "package": "com.anonymous.stash"
