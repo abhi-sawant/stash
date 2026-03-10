@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.stash"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +29,9 @@
               "mimeType": "text/plain"
             }
           ],
-          "category": ["android.intent.category.DEFAULT"]
+          "category": [
+            "android.intent.category.DEFAULT"
+          ]
         },
         {
           "action": "android.intent.action.SEND",
@@ -37,7 +40,9 @@
               "mimeType": "text/plain"
             }
           ],
-          "category": ["android.intent.category.DEFAULT"]
+          "category": [
+            "android.intent.category.DEFAULT"
+          ]
         }
       ],
       "package": "com.anonymous.stash"
