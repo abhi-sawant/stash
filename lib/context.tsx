@@ -1,13 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react'
 import { getAuthToken } from './auth-storage'
 import {
-    defaultSettings,
-    loadBookmarks,
-    loadCollections,
-    loadSettings,
-    saveBookmarks,
-    saveCollections,
-    saveSettings,
+  defaultSettings,
+  loadBookmarks,
+  loadCollections,
+  loadSettings,
+  saveBookmarks,
+  saveCollections,
+  saveSettings,
 } from './storage'
 import { uploadData } from './sync'
 import { AppSettings, Bookmark, Collection } from './types'
@@ -34,7 +34,7 @@ type Action =
   | { type: 'ADD_BOOKMARK'; payload: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'> }
   | { type: 'UPDATE_BOOKMARK'; payload: Partial<Bookmark> & { id: string } }
   | { type: 'DELETE_BOOKMARK'; payload: string }
-  | { type: 'ADD_COLLECTION'; payload: Omit<Collection, 'id' | 'createdAt'> }
+  | { type: 'ADD_COLLECTION'; payload: Omit<Collection, 'createdAt'> }
   | { type: 'UPDATE_COLLECTION'; payload: Partial<Collection> & { id: string } }
   | { type: 'DELETE_COLLECTION'; payload: string }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<AppSettings> }
@@ -68,7 +68,6 @@ function reducer(state: State, action: Action): State {
 
     case 'ADD_COLLECTION': {
       const collection: Collection = {
-        id: generateId(),
         createdAt: Date.now(),
         ...action.payload,
       }
@@ -104,7 +103,7 @@ interface BookmarksContextValue extends State {
   addBookmark: (data: Omit<Bookmark, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateBookmark: (data: Partial<Bookmark> & { id: string }) => void
   deleteBookmark: (id: string) => void
-  addCollection: (data: Omit<Collection, 'id' | 'createdAt'>) => void
+  addCollection: (data: Omit<Collection, 'id' | 'createdAt'>) => string
   updateCollection: (data: Partial<Collection> & { id: string }) => void
   deleteCollection: (id: string) => void
   updateSettings: (data: Partial<AppSettings>) => void
@@ -201,8 +200,10 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
 
   const addCollection = useCallback(
     (data: Omit<Collection, 'id' | 'createdAt'>) => {
-      dispatch({ type: 'ADD_COLLECTION', payload: data })
+      const id = generateId()
+      dispatch({ type: 'ADD_COLLECTION', payload: { ...data, id } })
       scheduleUpload()
+      return id
     },
     [scheduleUpload],
   )
