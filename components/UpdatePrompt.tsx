@@ -2,20 +2,8 @@ import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
 import { UpdateInfo } from '@/hooks/use-update-checker'
 import { getColors, radius, spacing, typography } from '@/lib/theme'
 import { Ionicons } from '@expo/vector-icons'
-import { cacheDirectory, createDownloadResumable, getContentUriAsync } from 'expo-file-system/legacy'
-import * as IntentLauncher from 'expo-intent-launcher'
-import { useCallback, useState } from 'react'
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { useCallback } from 'react'
+import { Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 interface Props {
   updateInfo: UpdateInfo
@@ -26,47 +14,18 @@ interface Props {
 export default function UpdatePrompt({ updateInfo, onDismiss, onSkipVersion }: Props) {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
-  const [downloading, setDownloading] = useState(false)
-  const [progress, setProgress] = useState(0)
-
-  const handleDownload = useCallback(async () => {
-    if (Platform.OS !== 'android') return
-    setDownloading(true)
-    setProgress(0)
-
-    const destPath = `${cacheDirectory}stash-${updateInfo.latestVersion}.apk`
-
-    try {
-      const downloadResumable = createDownloadResumable(updateInfo.downloadUrl, destPath, {}, (downloadProgress) => {
-        const pct =
-          downloadProgress.totalBytesExpectedToWrite > 0
-            ? downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
-            : 0
-        setProgress(pct)
+  const handleDownload = useCallback(() => {
+    // Redirect to the latest GitHub release page
+    const url = 'https://github.com/slowatcoding/stash/releases/latest'
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank')
+    } else {
+      import('expo-linking').then((Linking) => {
+        Linking.openURL(url)
       })
-
-      const result = await downloadResumable.downloadAsync()
-      if (!result) throw new Error('Download failed')
-
-      // Convert file:// URI to a content:// URI for Android 7+ compatibility
-      const contentUri = await getContentUriAsync(result.uri)
-
-      // Trigger Android package installer
-      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-        data: contentUri,
-        flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-        type: 'application/vnd.android.package-archive',
-      })
-      onDismiss()
-    } catch {
-      Alert.alert('Download Failed', 'Could not download the update. Please try again later.')
-    } finally {
-      setDownloading(false)
-      setProgress(0)
     }
-  }, [updateInfo, onDismiss])
-
-  const progressPct = Math.round(progress * 100)
+    onDismiss()
+  }, [onDismiss])
 
   return (
     <Modal visible transparent animationType='fade' onRequestClose={onDismiss}>
@@ -101,39 +60,24 @@ export default function UpdatePrompt({ updateInfo, onDismiss, onSkipVersion }: P
           ) : null}
 
           {/* Progress bar */}
-          {downloading && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${progressPct}%` }]} />
-              </View>
-              <Text style={[typography.labelSmall, { color: colors.textSecondary, marginTop: spacing.xs }]}>
-                {progressPct > 0 ? `Downloading… ${progressPct}%` : 'Starting download…'}
-              </Text>
-            </View>
-          )}
+          {/* No progress bar needed for redirect */}
 
           {/* Actions */}
           <View style={styles.actions}>
             <TouchableOpacity
               style={[styles.btnSecondary, { borderColor: colors.border }]}
               onPress={onSkipVersion}
-              activeOpacity={0.75}
-              disabled={downloading}>
+              activeOpacity={0.75}>
               <Text style={[typography.labelMedium, { color: colors.textSecondary }]}>Skip this version</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.btnPrimary, { backgroundColor: colors.primary, opacity: downloading ? 0.7 : 1 }]}
+              style={[styles.btnPrimary, { backgroundColor: colors.primary }]}
               onPress={handleDownload}
-              activeOpacity={0.75}
-              disabled={downloading}>
-              {downloading ? (
-                <ActivityIndicator size='small' color={colors.textOnPrimary} />
-              ) : (
-                <Ionicons name='download-outline' size={18} color={colors.textOnPrimary} />
-              )}
+              activeOpacity={0.75}>
+              <Ionicons name='download-outline' size={18} color={colors.textOnPrimary} />
               <Text style={[typography.labelMedium, { color: colors.textOnPrimary, marginLeft: spacing.xs }]}>
-                {downloading ? 'Downloading…' : 'Download & Install'}
+                {'Download'}
               </Text>
             </TouchableOpacity>
           </View>
