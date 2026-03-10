@@ -1,4 +1,5 @@
 import { api } from './api'
+import { loadBookmarks, loadCollections, loadSettings } from './storage'
 import type { AppSettings, Bookmark, Collection } from './types'
 
 export interface SyncData {
@@ -15,6 +16,7 @@ interface RemoteData {
 }
 
 const LAST_SYNCED_BACKUP_ID_KEY = 'stash_last_synced_backup_id'
+const LAST_SYNC_TIME_KEY = 'stash_last_sync_time'
 
 // ── Merge ────────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,7 @@ function setLastSyncedBackupId(id: number): void {
   localStorage.setItem(LAST_SYNCED_BACKUP_ID_KEY, id.toString())
 }
 
-async function fetchLatestBackup(): Promise<RemoteData | null> {
+export async function fetchLatestBackup(): Promise<RemoteData | null> {
   try {
     return (await api.backup.latest()) as unknown as RemoteData
   } catch (e: unknown) {
@@ -66,9 +68,26 @@ async function fetchLatestBackup(): Promise<RemoteData | null> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/** Returns the timestamp (ms) of the last successful upload, or null. */
+export function getLastSyncTime(): number | null {
+  const raw = localStorage.getItem(LAST_SYNC_TIME_KEY)
+  return raw ? parseInt(raw, 10) : null
+}
+
 /** Uploads a data snapshot to the server. */
 export async function uploadData(data: SyncData): Promise<void> {
   await api.backup.upload({ ...data, exportedAt: Date.now(), version: 1 })
+}
+
+/** Reads current data from localStorage and uploads it, recording the sync time. */
+export async function uploadBackup(): Promise<void> {
+  const data: SyncData = {
+    bookmarks: loadBookmarks(),
+    collections: loadCollections(),
+    settings: loadSettings(),
+  }
+  await uploadData(data)
+  localStorage.setItem(LAST_SYNC_TIME_KEY, Date.now().toString())
 }
 
 /**
