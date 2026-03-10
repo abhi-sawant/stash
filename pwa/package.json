@@ -14,7 +14,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
-    "vite-plugin-pwa": "^0.19.8",
+    "vite-plugin-pwa": "^0.21.0",
     "workbox-window": "^7.4.0"
   },
   "devDependencies": {
