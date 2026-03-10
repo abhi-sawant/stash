@@ -1,98 +1,217 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'
+import * as Clipboard from 'expo-clipboard'
+import { router } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
+import React, { useCallback, useRef, useState } from 'react'
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
+import BookmarkMasonryCard from '../../components/BookmarkMasonryCard'
+import EmptyState from '../../components/EmptyState'
+import FAB from '../../components/FAB'
+import { FilterChip, FilterRow, SearchBar } from '../../components/SearchBar'
+import { useBookmarks } from '../../lib/context'
+import { getColors, radius, spacing, typography } from '../../lib/theme'
+import { Bookmark, Collection } from '../../lib/types'
+import { searchFilter } from '../../lib/utils'
+
+function getColumnCount(width: number): number {
+  if (width >= 900) return 4
+  if (width >= 600) return 3
+  return 2
+}
+
+function buildColumns<T>(items: T[], numCols: number): T[][] {
+  const cols: T[][] = Array.from({ length: numCols }, () => [])
+  items.forEach((item, i) => cols[i % numCols].push(item))
+  return cols
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const scheme = useAppColorScheme()
+  const colors = getColors(scheme)
+  const { bookmarks, collections, deleteBookmark, getAllTags } = useBookmarks()
+  const { width } = useWindowDimensions()
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+  const [query, setQuery] = useState('')
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null)
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  const scrollRef = useRef<ScrollView>(null)
+  const numColumns = getColumnCount(width)
+  const allTags = getAllTags()
+
+  const filtered = bookmarks.filter((b) => {
+    if (activeCollectionId && b.collectionId !== activeCollectionId) return false
+    if (activeTag && !b.tags.includes(activeTag)) return false
+    if (query) {
+      return searchFilter(query, b.title, b.subtitle, b.url, ...b.tags)
+    }
+    return true
+  })
+
+  const columns = buildColumns(filtered, numColumns)
+
+  const getCollection = useCallback(
+    (id?: string): Collection | undefined => collections.find((c) => c.id === id),
+    [collections],
+  )
+
+  const openBookmark = (bookmark: Bookmark) => {
+    WebBrowser.openBrowserAsync(bookmark.url)
+  }
+
+  const confirmDelete = (bookmark: Bookmark) => {
+    Alert.alert('Delete Bookmark', `Delete "${bookmark.title || bookmark.url}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteBookmark(bookmark.id) },
+    ])
+  }
+
+  const scrollToTop = () => scrollRef.current?.scrollTo({ y: 0, animated: true })
+
+  const onScroll = (event: any) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 200)
+  }
+
+  const GAP = spacing.sm
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Persistent header — always visible above the scroll */}
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <View style={styles.topBar}>
+          <View>
+            <Text style={[styles.appName, { color: colors.primary }]}>Stash</Text>
+            <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
+              {bookmarks.length} saved {bookmarks.length === 1 ? 'link' : 'links'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: colors.primaryContainer }]}
+            onPress={() => router.push('/bookmark/add')}>
+            <Ionicons name='add' size={22} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          <SearchBar value={query} onChangeText={setQuery} />
+        </View>
+
+        {collections.length > 0 && (
+          <FilterRow>
+            <FilterChip
+              label='All'
+              active={!activeCollectionId && !activeTag}
+              onPress={() => {
+                setActiveCollectionId(null)
+                setActiveTag(null)
+              }}
+              icon='apps'
+            />
+            {collections.map((col) => (
+              <FilterChip
+                key={col.id}
+                label={col.name}
+                active={activeCollectionId === col.id}
+                onPress={() => {
+                  setActiveCollectionId(activeCollectionId === col.id ? null : col.id)
+                  setActiveTag(null)
+                }}
+                icon='folder'
+              />
+            ))}
+          </FilterRow>
+        )}
+
+        {allTags.length > 0 && (
+          <FilterRow>
+            {allTags.map((tag) => (
+              <FilterChip
+                key={tag}
+                label={`#${tag}`}
+                active={activeTag === tag}
+                onPress={() => {
+                  setActiveTag(activeTag === tag ? null : tag)
+                  setActiveCollectionId(null)
+                }}
+              />
+            ))}
+          </FilterRow>
+        )}
+      </View>
+
+      {/* Masonry grid */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon='bookmark-outline'
+          title={query || activeCollectionId || activeTag ? 'No matches found' : 'No bookmarks yet'}
+          subtitle={
+            query || activeCollectionId || activeTag
+              ? 'Try a different search or filter'
+              : 'Tap the + button to save your first link'
+          }
+        />
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.masonryContent, { gap: GAP, padding: GAP }]}>
+          {columns.map((col, ci) => (
+            <View key={ci} style={[styles.column, { gap: GAP }]}>
+              {col.map((bookmark) => (
+                <BookmarkMasonryCard
+                  key={bookmark.id}
+                  bookmark={bookmark}
+                  collection={getCollection(bookmark.collectionId)}
+                  onPress={() => openBookmark(bookmark)}
+                  onEdit={() => router.push(`/bookmark/${bookmark.id}`)}
+                  onCopyUrl={() => Clipboard.setStringAsync(bookmark.url)}
+                  onDelete={() => confirmDelete(bookmark)}
+                />
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {showScrollTop && <FAB onPress={scrollToTop} icon='chevron-up' />}
+      {!showScrollTop && <FAB onPress={() => router.push('/bookmark/add')} icon='add' />}
+    </SafeAreaView>
+  )
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: { flex: 1 },
+  header: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  appName: { ...typography.headlineLarge },
+  subtitleText: { ...typography.bodySmall, marginTop: 2 },
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  masonryContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-});
+  column: {
+    flex: 1,
+  },
+})

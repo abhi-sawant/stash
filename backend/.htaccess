@@ -1,0 +1,24 @@
+Options -Indexes
+
+RewriteEngine On
+
+# ─── Handle preflight OPTIONS requests ──────────────────────────────────────
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule .* - [R=200,L]
+
+# ─── Skip rewriting for actual files and directories ─────────────────────────
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ─── Auth endpoints ───────────────────────────────────────────────────────────
+RewriteRule ^api/auth/register/?$   api/auth/register.php   [L]
+RewriteRule ^api/auth/login/?$      api/auth/login.php      [L]
+RewriteRule ^api/auth/verify-otp/?$ api/auth/verify-otp.php [L]
+RewriteRule ^api/auth/resend-otp/?$ api/auth/resend-otp.php [L]
+RewriteRule ^api/auth/me/?$         api/auth/me.php         [L]
+
+# ─── Backup endpoints ─────────────────────────────────────────────────────────
+RewriteRule ^api/backup/upload/?$   api/backup/upload.php   [L]
+RewriteRule ^api/backup/latest/?$   api/backup/latest.php   [L]
+RewriteRule ^api/backup/list/?$     api/backup/list.php     [L]
