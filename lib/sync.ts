@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { api } from './api'
+import { loadBookmarks, loadCollections, loadSettings } from './storage'
 import type { AppSettings, Bookmark, Collection } from './types'
 
 export interface SyncData {
@@ -16,6 +17,7 @@ interface RemoteData {
 }
 
 const LAST_SYNCED_BACKUP_ID_KEY = 'stash_last_synced_backup_id'
+const LAST_SYNC_TIME_KEY = 'stash_last_sync_time'
 
 // ── Merge ────────────────────────────────────────────────────────────────────
 
@@ -67,9 +69,26 @@ async function fetchLatestBackup(): Promise<RemoteData | null> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/** Returns the timestamp (ms) of the last successful upload, or null. */
+export async function getLastSyncTime(): Promise<number | null> {
+  const raw = await AsyncStorage.getItem(LAST_SYNC_TIME_KEY)
+  return raw ? parseInt(raw, 10) : null
+}
+
 /** Uploads a data snapshot to the server. */
 export async function uploadData(data: SyncData): Promise<void> {
   await api.backup.upload({ ...data, exportedAt: Date.now(), version: 1 })
+}
+
+/** Reads current data from AsyncStorage and uploads it, recording the sync time. */
+export async function uploadBackup(): Promise<void> {
+  const data: SyncData = {
+    bookmarks: await loadBookmarks(),
+    collections: await loadCollections(),
+    settings: await loadSettings(),
+  }
+  await uploadData(data)
+  await AsyncStorage.setItem(LAST_SYNC_TIME_KEY, Date.now().toString())
 }
 
 /**

@@ -1,10 +1,10 @@
-import { Clipboard, Folder, Link2, Tag, X } from 'lucide-react'
+import { Clipboard, Folder, Link2, Plus, Tag, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ModalPage from '../components/ModalPage'
 import { useAppColorScheme } from '../hooks/use-app-color-scheme'
 import { useBookmarks } from '../lib/context'
-import { getColors, getTagColor, spacing } from '../lib/theme'
+import { COLLECTION_COLORS, COLLECTION_ICONS, getColors, getTagColor, spacing } from '../lib/theme'
 import { fetchUrlMetadata, getFaviconUrl, normalizeUrl } from '../lib/utils'
 
 export default function AddBookmarkPage() {
@@ -12,7 +12,7 @@ export default function AddBookmarkPage() {
   const [searchParams] = useSearchParams()
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
-  const { addBookmark, collections } = useBookmarks()
+  const { addBookmark, addCollection, collections } = useBookmarks()
 
   const initialUrl = searchParams.get('url') ?? ''
   const [url, setUrl] = useState(initialUrl)
@@ -26,6 +26,9 @@ export default function AddBookmarkPage() {
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [showCollectionPicker, setShowCollectionPicker] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showNewColForm, setShowNewColForm] = useState(false)
+  const [newColName, setNewColName] = useState('')
+  const [newColColor, setNewColColor] = useState(COLLECTION_COLORS[0])
 
   const initialFetched = useRef(false)
   useEffect(() => {
@@ -271,76 +274,173 @@ export default function AddBookmarkPage() {
       )}
 
       {/* Collection */}
-      {collections.length > 0 && (
-        <>
-          <label style={labelStyle}>Collection</label>
+      <label style={labelStyle}>Collection</label>
+      <button
+        onClick={() => {
+          setShowCollectionPicker(!showCollectionPicker)
+          setShowNewColForm(false)
+        }}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: colors.inputBg,
+          border: `1px solid ${colors.inputBorder}`,
+          borderRadius: 12,
+          padding: '10px 12px',
+          color: selectedCol ? colors.text : colors.textTertiary,
+          fontSize: 15,
+        }}>
+        <Folder size={16} color={selectedCol ? selectedCol.color : colors.textTertiary} />
+        {selectedCol ? selectedCol.name : 'Select a collection (optional)'}
+      </button>
+      {showCollectionPicker && (
+        <div
+          style={{
+            background: colors.card,
+            border: `1px solid ${colors.cardBorder}`,
+            borderRadius: 12,
+            marginTop: 4,
+            overflow: 'hidden',
+          }}>
           <button
-            onClick={() => setShowCollectionPicker(!showCollectionPicker)}
+            onClick={() => {
+              setSelectedCollection(null)
+              setShowCollectionPicker(false)
+              setShowNewColForm(false)
+            }}
             style={{
               width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              background: colors.inputBg,
-              border: `1px solid ${colors.inputBorder}`,
-              borderRadius: 12,
-              padding: '10px 12px',
-              color: selectedCol ? colors.text : colors.textTertiary,
-              fontSize: 15,
+              padding: '12px 16px',
+              textAlign: 'left',
+              fontSize: 14,
+              color: colors.textSecondary,
+              borderBottom: `1px solid ${colors.divider}`,
             }}>
-            <Folder size={16} color={selectedCol ? selectedCol.color : colors.textTertiary} />
-            {selectedCol ? selectedCol.name : 'Select a collection (optional)'}
+            None
           </button>
-          {showCollectionPicker && (
-            <div
+          {collections.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => {
+                setSelectedCollection(col.id)
+                setShowCollectionPicker(false)
+                setShowNewColForm(false)
+              }}
               style={{
-                background: colors.card,
-                border: `1px solid ${colors.cardBorder}`,
-                borderRadius: 12,
-                marginTop: 4,
-                overflow: 'hidden',
+                width: '100%',
+                padding: '12px 16px',
+                textAlign: 'left',
+                fontSize: 14,
+                color: colors.text,
+                borderBottom: `1px solid ${colors.divider}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: selectedCollection === col.id ? `${col.color}12` : 'transparent',
               }}>
-              <button
-                onClick={() => {
-                  setSelectedCollection(null)
-                  setShowCollectionPicker(false)
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  textAlign: 'left',
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  borderBottom: `1px solid ${colors.divider}`,
-                }}>
-                None
-              </button>
-              {collections.map((col) => (
-                <button
-                  key={col.id}
-                  onClick={() => {
-                    setSelectedCollection(col.id)
-                    setShowCollectionPicker(false)
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: col.color, flexShrink: 0 }} />
+              {col.name}
+            </button>
+          ))}
+
+          {/* New collection inline form */}
+          {showNewColForm ? (
+            <div style={{ padding: '12px 16px', borderTop: `1px solid ${colors.divider}` }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                {COLLECTION_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setNewColColor(c)}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      background: c,
+                      border: newColColor === c ? '2.5px solid rgba(255,255,255,0.9)' : '2.5px solid transparent',
+                      outline: newColColor === c ? `2px solid ${c}` : 'none',
+                      opacity: newColColor === c ? 1 : 0.65,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ width: 10, height: 10, borderRadius: 5, background: newColColor, flexShrink: 0 }} />
+                <input
+                  type='text'
+                  autoFocus
+                  value={newColName}
+                  onChange={(e) => setNewColName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newColName.trim()) {
+                      const id = addCollection({
+                        name: newColName.trim(),
+                        color: newColColor,
+                        icon: COLLECTION_ICONS[0],
+                      })
+                      setSelectedCollection(id)
+                      setShowCollectionPicker(false)
+                      setShowNewColForm(false)
+                      setNewColName('')
+                      setNewColColor(COLLECTION_COLORS[0])
+                    }
                   }}
+                  placeholder='Collection name...'
                   style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    textAlign: 'left',
+                    flex: 1,
                     fontSize: 14,
                     color: colors.text,
-                    borderBottom: `1px solid ${colors.divider}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    background: selectedCollection === col.id ? `${col.color}12` : 'transparent',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    padding: '4px 0',
+                  }}
+                />
+                <button
+                  disabled={!newColName.trim()}
+                  onClick={() => {
+                    if (!newColName.trim()) return
+                    const id = addCollection({ name: newColName.trim(), color: newColColor, icon: COLLECTION_ICONS[0] })
+                    setSelectedCollection(id)
+                    setShowCollectionPicker(false)
+                    setShowNewColForm(false)
+                    setNewColName('')
+                    setNewColColor(COLLECTION_COLORS[0])
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    background: colors.primary,
+                    color: colors.textOnPrimary,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    opacity: newColName.trim() ? 1 : 0.4,
+                    flexShrink: 0,
                   }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 5, background: col.color, flexShrink: 0 }} />
-                  {col.name}
+                  Create
                 </button>
-              ))}
+              </div>
             </div>
+          ) : (
+            <button
+              onClick={() => setShowNewColForm(true)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                textAlign: 'left',
+                fontSize: 14,
+                color: colors.primary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+              <Plus size={16} />
+              New Collection
+            </button>
           )}
-        </>
+        </div>
       )}
 
       <div style={{ height: 40 }} />
