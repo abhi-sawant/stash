@@ -12,7 +12,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  max-width: 430px;
+  max-width: 768px;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
