@@ -2,44 +2,45 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
-import { useAuth } from '../../lib/auth-context'
+import { api } from '../../lib/api'
 import { getColors, radius, spacing, typography } from '../../lib/theme'
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
   const router = useRouter()
-  const { login } = useAuth()
 
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
 
-  const handleLogin = async () => {
+  const handleSend = async () => {
     setError(null)
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.')
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) {
+      setError('Please enter your email address.')
       return
     }
     setLoading(true)
     try {
-      await login(email.trim().toLowerCase(), password)
-      router.push('/auth/otp')
+      await api.auth.forgotPassword(trimmed)
+      setSent(true)
+      // Navigate to reset screen, passing the email so it's pre-filled
+      router.push({ pathname: '/auth/reset-password', params: { email: trimmed } })
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Please try again.')
     } finally {
@@ -62,17 +63,16 @@ export default function LoginScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={[styles.iconBox, { backgroundColor: colors.primaryContainer }]}>
-              <Ionicons name='bookmark' size={32} color={colors.primary} />
+              <Ionicons name='key-outline' size={32} color={colors.primary} />
             </View>
-            <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Forgot password?</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Sign in to enable automatic cloud backups
+              {"Enter your email and we'll send you a reset code"}
             </Text>
           </View>
 
           {/* Form */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            {/* Email */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
               <View style={[styles.inputRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
@@ -87,64 +87,29 @@ export default function LoginScreen() {
                   autoCorrect={false}
                   keyboardType='email-address'
                   textContentType='emailAddress'
-                  returnKeyType='next'
-                />
-              </View>
-            </View>
-
-            {/* Password */}
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
-              <View style={[styles.inputRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                <Ionicons name='lock-closed-outline' size={18} color={colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder='Your password'
-                  placeholderTextColor={colors.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  textContentType='password'
                   returnKeyType='done'
-                  onSubmitEditing={handleLogin}
+                  onSubmitEditing={handleSend}
                 />
-                <TouchableOpacity onPress={() => setShowPassword((v) => !v)} activeOpacity={0.7}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color={colors.textTertiary}
-                    style={styles.inputIcon}
-                  />
-                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Error */}
             {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
           </View>
 
-          {/* Sign In button */}
+          {/* Send button */}
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary }, loading && styles.btnDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
+            onPress={handleSend}
+            disabled={loading || sent}
             activeOpacity={0.75}>
-            {loading ? <ActivityIndicator color='#fff' /> : <Text style={styles.primaryBtnText}>Sign In</Text>}
+            {loading ? <ActivityIndicator color='#fff' /> : <Text style={styles.primaryBtnText}>Send Reset Code</Text>}
           </TouchableOpacity>
 
-          {/* Forgot password link */}
-          <TouchableOpacity
-            style={styles.forgotBtn}
-            onPress={() => router.push('/auth/forgot-password')}
-            activeOpacity={0.75}>
-            <Text style={[styles.footerLink, { color: colors.primary }]}>Forgot password?</Text>
-          </TouchableOpacity>
-
-          {/* Register link */}
+          {/* Back to login */}
           <View style={styles.footerRow}>
-            <Text style={[styles.footerText, { color: colors.textSecondary }]}>{"Don't have an account?"}</Text>
-            <TouchableOpacity onPress={() => router.replace('/auth/register')} activeOpacity={0.75}>
-              <Text style={[styles.footerLink, { color: colors.primary }]}> Create one</Text>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>Remember your password?</Text>
+            <TouchableOpacity onPress={() => router.replace('/auth/login')} activeOpacity={0.75}>
+              <Text style={[styles.footerLink, { color: colors.primary }]}> Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -229,10 +194,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: spacing.xl,
-  },
-  forgotBtn: {
-    alignSelf: 'center',
-    marginTop: spacing.lg,
   },
   footerText: { ...typography.bodyMedium },
   footerLink: { ...typography.titleSmall },

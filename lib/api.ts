@@ -60,6 +60,20 @@ export const api = {
         body: JSON.stringify({ email }),
       }),
 
+    /** Sends a password reset OTP to the email (if the account exists). */
+    forgotPassword: (email: string) =>
+      request('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+
+    /** Verifies the reset OTP and sets a new password. */
+    resetPassword: (email: string, otp: string, password: string) =>
+      request('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp, password }),
+      }),
+
     /** Returns the current user from the JWT. */
     me: () => request<{ user: { id: number; email: string } }>('/api/auth/me'),
   },

@@ -1,32 +1,30 @@
-import { ArrowLeft, Bookmark, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { ArrowLeft, KeyRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppColorScheme } from '../hooks/use-app-color-scheme'
-import { useAuth } from '../lib/auth-context'
+import { api } from '../lib/api'
 import { getColors, spacing } from '../lib/theme'
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
 
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleLogin = async () => {
+  const handleSend = async () => {
     setError(null)
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.')
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) {
+      setError('Please enter your email address.')
       return
     }
     setLoading(true)
     try {
-      await login(email.trim().toLowerCase(), password)
-      navigate('/auth/otp')
+      await api.auth.forgotPassword(trimmed)
+      navigate(`/auth/reset-password?email=${encodeURIComponent(trimmed)}`)
     } catch (e: unknown) {
       setError((e instanceof Error ? e.message : null) ?? 'Something went wrong. Please try again.')
     } finally {
@@ -42,7 +40,7 @@ export default function LoginPage() {
     border: `1px solid ${colors.inputBorder}`,
     borderRadius: 12,
     padding: '12px 14px',
-  }
+  } as const
 
   return (
     <div
@@ -79,11 +77,11 @@ export default function LoginPage() {
               justifyContent: 'center',
               margin: '0 auto 16px',
             }}>
-            <Bookmark size={32} color={colors.primary} />
+            <KeyRound size={32} color={colors.primary} />
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: colors.text }}>Welcome back</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: colors.text }}>Forgot password?</h1>
           <p style={{ fontSize: 14, color: colors.textSecondary, marginTop: 6 }}>
-            Sign in to enable automatic cloud backups
+            Enter your email and we'll send you a reset code
           </p>
         </div>
 
@@ -98,41 +96,19 @@ export default function LoginPage() {
             flexDirection: 'column',
             gap: spacing.lg,
           }}>
-          {/* Email */}
           <div>
             <p style={{ fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 6 }}>Email</p>
             <div style={inputRowStyle}>
-              <Mail size={18} color={colors.textTertiary} />
               <input
                 type='email'
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder='you@example.com'
                 autoComplete='email'
+                autoFocus
                 style={{ flex: 1, fontSize: 15, color: colors.text, background: 'transparent' }}
               />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 6 }}>Password</p>
-            <div style={inputRowStyle}>
-              <Lock size={18} color={colors.textTertiary} />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder='••••••••'
-                autoComplete='current-password'
-                style={{ flex: 1, fontSize: 15, color: colors.text, background: 'transparent' }}
-              />
-              <button
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ color: colors.textTertiary, display: 'flex' }}>
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
             </div>
           </div>
 
@@ -143,7 +119,7 @@ export default function LoginPage() {
           )}
 
           <button
-            onClick={handleLogin}
+            onClick={handleSend}
             disabled={loading}
             style={{
               width: '100%',
@@ -155,20 +131,14 @@ export default function LoginPage() {
               fontWeight: 600,
               opacity: loading ? 0.7 : 1,
             }}>
-            {loading ? 'Sending OTP...' : 'Sign In'}
+            {loading ? 'Sending...' : 'Send Reset Code'}
           </button>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 14, color: colors.textSecondary, marginTop: spacing.xl }}>
-          Don't have an account?{' '}
-          <Link to='/auth/register' style={{ color: colors.primary, fontWeight: 600 }}>
-            Create one
-          </Link>
-        </p>
-
-        <p style={{ textAlign: 'center', marginTop: spacing.md }}>
-          <Link to='/auth/forgot-password' style={{ fontSize: 14, color: colors.primary, fontWeight: 600 }}>
-            Forgot password?
+          Remember your password?{' '}
+          <Link to='/auth/login' style={{ color: colors.primary, fontWeight: 600 }}>
+            Sign In
           </Link>
         </p>
       </div>

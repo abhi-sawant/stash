@@ -8,10 +8,12 @@ import AddCollectionPage from './pages/AddCollectionPage'
 import CollectionDetailPage from './pages/CollectionDetailPage'
 import CollectionsPage from './pages/CollectionsPage'
 import EditBookmarkPage from './pages/EditBookmarkPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import OtpPage from './pages/OtpPage'
 import RegisterPage from './pages/RegisterPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
 
@@ -32,6 +34,8 @@ export default function App() {
             <Route path='/auth/login' element={<LoginPage />} />
             <Route path='/auth/register' element={<RegisterPage />} />
             <Route path='/auth/otp' element={<OtpPage />} />
+            <Route path='/auth/forgot-password' element={<ForgotPasswordPage />} />
+            <Route path='/auth/reset-password' element={<ResetPasswordPage />} />
 
             {/* Main app — tab layout */}
             <Route element={<TabLayout />}>
