@@ -1,613 +1,220 @@
-# Copilot Instructions — Stash
+# Stash – Coding Agent Instructions
 
-## Project Overview
+Trust these instructions. Only search the codebase if information here is incomplete or wrong.
 
-**Stash** is a bookmark manager with two clients sharing a common PHP backend:
+## What This Repository Is
 
-1. **React Native app** — Expo (SDK 54) + Expo Router v6, lives in the repo root.
-2. **PWA** — React 19 + Vite + react-router-dom v7, lives in `pwa/`.
+**Stash** is a bookmark manager with three sub-projects in one repo:
 
-Users save URLs with metadata (title, description, cover image, favicon), organise them into nested collections, and tag them for search. Data is stored locally and optionally synced to the cloud via a JWT-authenticated backup API.
+| Sub-project | Path       | Stack                                    | Purpose                           |
+| ----------- | ---------- | ---------------------------------------- | --------------------------------- |
+| Mobile app  | `/` (root) | Expo 54 / React Native 0.81 / TypeScript | iOS & Android app                 |
+| PWA         | `pwa/`     | React 19 / Vite 7 / TypeScript           | Web app, deployed to GitHub Pages |
+| Backend     | `backend/` | PHP (shared cPanel hosting)              | REST API for cloud sync           |
 
----
-
-## Backend
-
-- **API base**: `https://api.stash.slowatcoding.com`
-- **Language**: PHP — source lives in `backend/`
-- **Auth**: Email + password → OTP email → JWT token
-- **Endpoints** (all under `/api/`):
-  - `auth/register`, `auth/login` — returns nothing on success, sends OTP
-  - `auth/verify-otp` — returns `{ token, user: { id, email } }`
-  - `auth/resend-otp`, `auth/me`
-  - `backup/upload` (POST), `backup/latest` (GET), `backup/list` (GET)
-- All authenticated requests send `Authorization: Bearer <token>`
+Users save, organize, and search bookmarks. Data is stored locally (AsyncStorage on mobile, localStorage on web) and optionally synced to a PHP backend via JWT-authenticated REST API.
 
 ---
 
-## React Native App (repo root)
+## Runtime & Tool Versions
 
-### Tech Stack
+- **Node.js**: 22.x (local); CI uses Node 20 (see `pwa/package.json` CI workflow)
+- **npm**: 11.x
+- **TypeScript**: ~5.9 (both root and `pwa/`)
+- **Expo CLI**: bundled via `expo` package (use `npx expo …`)
+- **PHP**: deployed on MilesWeb cPanel shared hosting (no local PHP tooling needed)
 
-- **Framework**: Expo ~54 / React Native 0.81 / React 19
-- **Navigation**: Expo Router v6 (file-based, `app/` directory)
-- **State**: React Context + `useReducer` — see `lib/context.tsx`
-- **Storage**: `@react-native-async-storage/async-storage` via `lib/storage.ts`
-- **Icons**: `@expo/vector-icons` — use `Ionicons` exclusively
-- **Language**: TypeScript (strict)
-- **Styling**: `StyleSheet.create` — no Tailwind/NativeWind
-- **Animation**: `react-native-reanimated` (used in `FAB` for animated show/hide)
+---
 
-### Project Structure
+## Mobile App (Root)
+
+### Bootstrap & Run
+
+```bash
+# Always run first — installs all dependencies
+npm install
+
+# Start Expo dev server (scan QR with Expo Go, or press i/a for simulator)
+npm start              # alias for: npx expo start
+npm run ios            # run iOS simulator build
+npm run android        # run Android emulator build
+```
+
+### TypeScript Check
+
+```bash
+npx tsc --noEmit       # exits 0 (clean) — run from repo root
+```
+
+### Lint
+
+```bash
+npm run lint           # alias for: npx expo lint
+```
+
+**Known pre-existing lint warning** (not a build failure):
+
+- `app/(tabs)/collections.tsx` line 37: `'renderItem' is assigned a value but never used`
+
+There are **no tests** in the mobile app.
+
+### Key Configuration Files
+
+| File               | Purpose                                                                      |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `app.json`         | Expo app config (name: Stash, slug: stash, bundle ID: `com.anonymous.stash`) |
+| `tsconfig.json`    | Extends `expo/tsconfig.base`; strict mode; `@/*` maps to repo root           |
+| `eslint.config.js` | Uses `eslint-config-expo/flat`; ignores `dist/*`                             |
+| `package.json`     | Scripts: `start`, `android`, `ios`, `web`, `lint`, `reset-project`           |
+
+### Architecture
+
+- **File-based routing** via `expo-router`. All screens live under `app/`.
+- **State management**: React Context + `useReducer` in `lib/context.tsx` (`BookmarksProvider`). Auth state in `lib/auth-context.tsx` (`AuthProvider`).
+- **Local persistence**: `@react-native-async-storage/async-storage` via `lib/storage.ts`. Keys are prefixed `pb_`.
+- **Cloud sync**: `lib/sync.ts` — merge-on-conflict strategy (bookmarks: last-writer-wins by `updatedAt`; collections: union, local wins; settings: always local).
+- **API client**: `lib/api.ts` — all calls to `https://api.stash.slowatcoding.com`.
+- **Path alias**: `@/` resolves to the repo root (not `src/`).
+
+### App Directory Layout
 
 ```
 app/
-  _layout.tsx          # Root layout: AuthProvider > BookmarksProvider > Stack
-  (tabs)/
-    _layout.tsx        # Tab bar config — Bookmarks, Collections, Search, Settings
-    index.tsx          # Home: masonry grid of bookmarks with search + filter chips
-    collections.tsx    # Collections: 2-col grid of root collections, nested children inline
-    search.tsx         # Dedicated search screen
-    settings.tsx       # Theme, backup, cloud sync, sign-in/out
-  auth/                # Auth flow: login.tsx, otp.tsx, register.tsx
-  bookmark/            # [id].tsx (edit modal), add.tsx (add modal)
-  collection/          # [id].tsx (collection detail masonry), add.tsx (create/edit modal)
-components/
-  BookmarkMasonryCard.tsx  # Card for masonry grid — cover image, title, tags, collection badge
-  CollectionCard.tsx       # Collection card with icon, color bar, bookmark count
-  ContextMenu.tsx          # Floating dropdown menu (Modal-based, measures trigger position)
-  EmptyState.tsx           # Centred icon + title + subtitle placeholder
-  FAB.tsx                  # Animated floating action button (spring in/out via Reanimated)
-  SearchBar.tsx            # Exports: SearchBar, FilterChip, FilterRow
-hooks/
-  use-app-color-scheme.ts  # Returns effective scheme: reads settings, falls back to RN useColorScheme()
-  use-background-sync.ts   # Syncs on mount + AppState 'active'
-lib/
-  api.ts               # Typed fetch wrapper + api.auth.* / api.backup.* methods
-  auth-context.tsx     # AuthProvider + useAuth() — login/register/OTP/logout
-  auth-storage.ts      # AsyncStorage helpers for JWT token + StoredUser
-  context.tsx          # BookmarksProvider + useBookmarks() — full CRUD + debounced upload
-  storage.ts           # Async AsyncStorage read/write; keys prefixed pb_
-  sync.ts              # mergeData(), fetchAndMerge(), uploadData()
-  theme.ts             # getColors(), spacing, typography (numeric lineHeight), radius, COLLECTION_*, TAG_COLORS
-  types.ts             # Bookmark, Collection, AppSettings, UrlMetadata
-  utils.ts             # generateId, extractDomain, normalizeUrl, getFaviconUrl, fetchUrlMetadata, searchFilter, formatDate
-  backup.ts            # Local JSON backup via expo-file-system + expo-sharing + expo-document-picker
+  _layout.tsx          ← Root layout; wraps AuthProvider + BookmarksProvider
+  modal.tsx
+  (tabs)/              ← Bottom tab navigator (Bookmarks, Collections, Search, Settings)
+  auth/                ← Auth screens (login, register, otp, forgot-password, reset-password)
+  bookmark/[id].tsx    ← Bookmark detail/edit (modal)
+  bookmark/add.tsx     ← Add bookmark (modal)
+  collection/[id].tsx  ← Collection detail
+  collection/add.tsx   ← Add collection (modal)
 ```
 
-### Auth Flow (React Native)
+### Shared Libraries (`lib/`)
 
-- `AuthProvider` wraps the entire app (outside `BookmarksProvider`) in `app/_layout.tsx`.
-- `useAuth()` exposes: `user`, `token`, `loading`, `pendingEmail`, `login()`, `register()`, `verifyOtp()`, `resendOtp()`, `logout()`.
-- Credentials are persisted to AsyncStorage via `lib/auth-storage.ts`.
-- Auth screens live under `app/auth/` with a nested `Stack` (`headerShown: false`).
-- Navigate to `auth/otp` after calling `login()` or `register()`.
-
-### Cloud Sync (React Native)
-
-- `useBackgroundSync()` (in `hooks/use-background-sync.ts`) runs on mount and every time `AppState` becomes `'active'`.
-- It calls `fetchAndMerge()` to reconcile local + remote data, then `uploadData()` to push the merged result.
-- Inside `BookmarksProvider`, every mutation schedules a **debounced upload (3 s)** via `scheduleUpload()`.
-- Sync is skipped when not signed in (`user` is null).
-- `lib/sync.ts` exports: `mergeData`, `uploadData`, `fetchAndMerge`, `SyncData`.
-
-### Local Backup (React Native)
-
-`lib/backup.ts` exposes three functions used in the Settings screen:
-
-- `createLocalBackup()` — exports JSON and shares it via `expo-sharing`
-- `saveBackupToDownloads()` — writes backup to Downloads (Android) or Documents (iOS) using `expo-file-system`
-- `restoreFromBackup()` — opens a JSON file picker via `expo-document-picker` and restores data
-
-### Key Conventions (React Native)
-
-#### Theming
-
-```tsx
-const scheme = useAppColorScheme() // ColorSchemeName ('light' | 'dark' | null)
-const colors = getColors(scheme) // full palette from lib/theme.ts
-```
-
-- `useAppColorScheme()` reads `settings.themePreference` and falls back to `useColorScheme()` from react-native.
-- Use `spacing`, `typography`, and `radius` from `lib/theme.ts` — never hardcode pixel values.
-- `typography` values use **numeric** `lineHeight` (e.g. `40`) — React Native style.
-- `getTagColor(tag)` returns `{ bg, text }` for consistent tag pill colours.
-
-#### State / Context
-
-- Access all state through `useBookmarks()` from `lib/context.tsx`.
-- Available actions: `ADD_BOOKMARK`, `UPDATE_BOOKMARK`, `DELETE_BOOKMARK`, `ADD_COLLECTION`, `UPDATE_COLLECTION`, `DELETE_COLLECTION`, `UPDATE_SETTINGS`, `RESTORE`, `LOAD`.
-- `getAllTags()` returns a sorted array of all unique tags across bookmarks.
-- Never mutate state directly; always go through the context.
-
-```tsx
-const {
-  bookmarks,
-  collections,
-  settings,
-  loading,
-  addBookmark,
-  updateBookmark,
-  deleteBookmark,
-  addCollection,
-  updateCollection,
-  deleteCollection,
-  updateSettings,
-  restore,
-  getAllTags,
-} = useBookmarks()
-```
-
-#### Navigation
-
-- Use `expo-router` primitives: `useRouter()`, `useLocalSearchParams()`, `Link`.
-- Modal screens: `presentation: 'modal'`, `headerShown: false` (configured in `app/_layout.tsx`).
-- Dynamic routes use bracket filenames: `bookmark/[id].tsx`, `collection/[id].tsx`.
-- `collection/add.tsx` accepts `?edit=<id>` and `?parentId=<id>` search params for edit and sub-collection creation.
-
-#### Components
-
-- Define a typed `interface Props` for every component.
-- Use `SafeAreaView` from `react-native-safe-area-context` (not RN core) for root screen containers.
-- Use `TouchableOpacity` with `activeOpacity={0.75}` for pressable items.
-- Prefer `expo-image` for remote images in new components.
-- `SearchBar.tsx` exports `SearchBar`, `FilterChip` (toggle chip), and `FilterRow` (horizontal scroll wrapper).
-- `ContextMenu` props: `actions: MenuAction[]` (each: `{ label, icon, onPress, destructive? }`), `iconSize?`, `iconColor?`.
-- `FAB` props: `onPress`, `visible?` (animates in/out via Reanimated spring), `icon?` (Ionicons name, default `'add'`).
-- `EmptyState` props: `icon` (Ionicons name), `title`, `subtitle?`.
-
-#### Home & Collection Detail Layout
-
-- Bookmarks render as a **masonry grid** using `BookmarkMasonryCard`.
-- Column count: 2 (default), 3 (≥ 600 px), 4 (≥ 900 px) — use `useWindowDimensions()`.
-- Collection detail (`collection/[id].tsx`) includes bookmarks from the collection **and its direct child collections**.
-
-#### Icons
-
-- `import { Ionicons } from '@expo/vector-icons'` — use Ionicons names only (e.g. `'bookmark-outline'`, `'folder'`, `'add'`).
+| File               | Purpose                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `types.ts`         | `Bookmark`, `Collection`, `AppSettings`, `UrlMetadata` interfaces |
+| `storage.ts`       | AsyncStorage CRUD for bookmarks/collections/settings              |
+| `context.tsx`      | `BookmarksProvider` + `useBookmarks()` hook                       |
+| `auth-context.tsx` | `AuthProvider` + `useAuth()` hook                                 |
+| `auth-storage.ts`  | Token/user persistence                                            |
+| `api.ts`           | Typed REST client (`api.auth.*`, `api.backup.*`)                  |
+| `sync.ts`          | Fetch-and-merge sync logic + debounced upload                     |
+| `utils.ts`         | `generateId()`, `fetchUrlMetadata()`, URL helpers                 |
+| `theme.ts`         | Color constants, `getColors(scheme)`, collection colors/icons     |
+| `backup.ts`        | Import/export helpers (JSON file)                                 |
 
 ---
 
 ## PWA (`pwa/`)
 
-### Tech Stack
+### Bootstrap & Build
 
-- **Framework**: React 19 + Vite 7
-- **Routing**: react-router-dom v7 (`BrowserRouter` + `Routes`)
-- **Icons**: `lucide-react` — use Lucide icon components (e.g. `Home`, `Search`, `FolderOpen`, `X`, `Pencil`, `Trash2`)
-- **PWA**: `vite-plugin-pwa` with Workbox; manifest configured in `vite.config.ts`
-- **Language**: TypeScript (strict)
-- **Styling**: Inline styles with the shared theme system — no CSS frameworks, minimal use of `index.css` (only global resets and `.page-scroll`)
+```bash
+cd pwa
 
-### Project Structure
+# Install — MUST use --legacy-peer-deps (peer dep conflicts otherwise)
+npm install --legacy-peer-deps
 
-```
-pwa/
-  vite.config.ts         # Vite + VitePWA config; dev proxy → api.stash.slowatcoding.com
-  src/
-    App.tsx              # BrowserRouter + Routes; BookmarksProvider > AuthProvider
-    main.tsx
-    index.css            # Global resets, .page-scroll, desktop phone-frame styles
-    components/
-      TabLayout.tsx      # Bottom tab bar (Home/Search/Collections/Settings) + <Outlet>
-      BookmarkCard.tsx   # Card with cover image, tags, collection badge, hover shadow
-      CollectionCard.tsx
-      ContextMenu.tsx
-      EmptyState.tsx
-      FAB.tsx
-      ModalPage.tsx      # Full-screen modal — title, X close, optional save button
-      SearchBar.tsx
-    hooks/
-      use-app-color-scheme.ts  # Reads settings + window.matchMedia; returns 'light' | 'dark'
-      use-background-sync.ts   # Syncs on mount + document.visibilitychange
-    lib/
-      api.ts             # Same API wrapper as the RN app (fetch-based)
-      auth-context.tsx   # AuthProvider + useAuth() — synchronous localStorage variant
-      auth-storage.ts    # localStorage helpers — all synchronous, no async/await
-      context.tsx        # BookmarksProvider + useBookmarks() — identical shape to RN; loads synchronously
-      storage.ts         # Synchronous localStorage r/w; keys prefixed pb_; exportAllData / importAllData
-      sync.ts            # mergeData, uploadData, fetchAndMerge, fetchLatestBackup, getLastSyncTime, uploadBackup
-      theme.ts           # getColors(), spacing, typography (px string lineHeight), radius, COLLECTION_*, TAG_COLORS
-      types.ts           # Bookmark, Collection, AppSettings, UrlMetadata, StoredUser
-      utils.ts           # generateId, extractDomain, normalizeUrl, getFaviconUrl, fetchUrlMetadata, searchFilter, formatDate
-    pages/
-      HomePage.tsx           # Masonry bookmark grid with search + filter chips
-      SearchPage.tsx
-      CollectionsPage.tsx
-      CollectionDetailPage.tsx   # Shows collection + child collections' bookmarks; renders Lucide icon via ICON_MAP
-      SettingsPage.tsx           # Theme picker, local backup export/import, cloud sync, sign-in/out
-      AddBookmarkPage.tsx        # Accepts ?url= param; auto-fetches metadata on load
-      EditBookmarkPage.tsx
-      AddCollectionPage.tsx
-      LoginPage.tsx
-      RegisterPage.tsx
-      OtpPage.tsx
+# Production build (runs tsc -b then vite build)
+npm run build          # outputs to pwa/dist/; succeeds with a bundle-size warning (non-fatal)
+
+# Dev server (proxies /api to https://api.stash.slowatcoding.com)
+npm run dev
+
+# Lint
+npm run lint
 ```
 
-### Auth Flow (PWA)
+**Known pre-existing lint errors** (4 errors, not failures of the CI build):
 
-- `AuthProvider` is inside `BookmarksProvider` in `App.tsx` (opposite nesting order to RN).
-- `auth-storage.ts` uses synchronous `localStorage` — no `async/await`.
-- Auth routes: `/auth/login`, `/auth/register`, `/auth/otp`.
-- After `login()` or `register()`, navigate to `/auth/otp`.
+- `pwa/src/hooks/use-app-color-scheme.ts`: `setState` called synchronously in effect
+- `pwa/src/lib/auth-context.tsx`: same + fast-refresh export warning
+- `pwa/src/lib/context.tsx`: fast-refresh export warning
 
-### Cloud Sync (PWA)
+The CI **only runs `npm run build`**, not lint. Do not treat the above lint errors as regressions.
 
-- `useBackgroundSync()` runs on mount and on `document.visibilitychange` (tab focus).
-- `lib/sync.ts` exports: `mergeData`, `uploadData`, `fetchAndMerge`, `fetchLatestBackup`, `getLastSyncTime`, `uploadBackup`.
-- `uploadBackup()` reads current localStorage data and uploads it, saving a `LAST_SYNC_TIME` key.
-- `getLastSyncTime()` returns timestamp (ms) of last successful upload or `null`.
+### PWA Architecture
 
-### Layout & Viewport (PWA)
+The PWA is a near-mirror of the mobile app: same context/auth/api/sync pattern. Key difference: uses `localStorage` instead of AsyncStorage, and `react-router-dom` for routing.
 
-- `#root` is constrained to `max-width: 768px`, centered, `height: 100dvh`.
-- On viewports ≥ 768 px, `body` shows a dark background (`#1a1a2e`) and root gets a phone-frame shadow/border-radius — simulates a phone on desktop.
-- Scrollable areas use `className='page-scroll'` (flex: 1, overflow-y: auto, overscroll-behavior: contain).
-
-### Routing (PWA)
-
-```tsx
-// Tab screens wrapped by TabLayout (renders <Outlet> + bottom tab bar)
-/home, /search, /collections, /settings
-
-// Full-screen modal pages (rendered outside TabLayout)
-/bookmark/add?url=..., /bookmark/:id
-/collection/add, /collection/:id
-
-// Auth pages
-/auth/login, /auth/register, /auth/otp
+```
+pwa/src/
+  App.tsx              ← Router + providers root
+  lib/                 ← Mirrors root lib/ (api.ts, context.tsx, sync.ts, etc.)
+  pages/               ← One file per route
+  components/          ← Shared UI components
+  hooks/               ← use-app-color-scheme, use-background-sync, etc.
 ```
 
-### Theming (PWA)
+### Key PWA Config
 
-```tsx
-const scheme = useAppColorScheme() // 'light' | 'dark'
-const colors = getColors(scheme) // AppColors from pwa/src/lib/theme.ts
+| File                    | Purpose                                             |
+| ----------------------- | --------------------------------------------------- |
+| `pwa/vite.config.ts`    | Dev proxy for `/api`; PWA manifest (theme: #7C3AED) |
+| `pwa/tsconfig.app.json` | TypeScript config for source                        |
+| `pwa/eslint.config.js`  | typescript-eslint + react-hooks + react-refresh     |
+
+---
+
+## Backend (`backend/`)
+
+PHP REST API. **No local build or run steps** — it is uploaded to cPanel hosting.
+
+```
+backend/
+  schema.sql           ← MySQL schema (users, otps, backups tables)
+  config/
+    config.php         ← DB credentials + JWT_SECRET (fill in before deploying)
+    database.php       ← PDO connection factory
+  middleware/
+    auth.php           ← JWT bearer token validation
+    cors.php           ← CORS headers
+  utils/
+    jwt.php            ← JWT encode/decode
+    mailer.php         ← OTP email via PHP mail()
+  api/
+    auth/              ← register, login, verify-otp, resend-otp, me, forgot-password, reset-password
+    backup/            ← upload, latest, list
 ```
 
-- `typography` values use CSS `lineHeight` **strings** (e.g. `'24px'`), unlike the RN app which uses numeric values.
-- Pass `colors` as a prop to components; do not import theme globals directly.
-- Use `ModalPage` for full-screen add/edit screens — props: `title`, `onClose`, `onSave?`, `saveLabel?`, `saveDisabled?`, `children`, `colors`.
+API base URL: `https://api.stash.slowatcoding.com`
 
-### PWA Component Conventions
-
-- All styling via inline `style` objects using `colors.*`, `spacing.*`, `radius.*`.
-- `WebkitTapHighlightColor: 'transparent'` on interactive elements.
-- Use `lucide-react` icons — import named components (e.g. `import { X, Pencil } from 'lucide-react'`).
-- Scrollable content areas use `className='page-scroll'` (defined in `index.css`).
-- No `SafeAreaView` — use `paddingBottom: 'env(safe-area-inset-bottom, 0px)'` where needed (e.g. tab bar).
-- Collection icons in the PWA are Lucide names mapped via `ICON_MAP` (e.g. `'code-2'` → `Code2` component). See `CollectionDetailPage.tsx` for the mapping pattern.
+When modifying PHP files, edit them locally and upload to the cPanel server via File Manager or FTP.
 
 ---
 
-## Shared Conventions
+## CI/CD
 
-### Core Data Types (identical in both apps)
+One GitHub Actions workflow: `.github/workflows/deploy-pwa.yml`
 
-```ts
-interface Bookmark {
-  id: string
-  url: string
-  title: string
-  subtitle: string
-  imageUri?: string
-  faviconUri?: string
-  tags: string[]
-  collectionId?: string
-  createdAt: number
-  updatedAt: number
-}
-interface Collection {
-  id: string
-  name: string
-  parentId?: string // supports one level of nesting
-  color: string // hex from COLLECTION_COLORS
-  icon: string // icon slug from COLLECTION_ICONS
-  createdAt: number
-}
-interface AppSettings {
-  themePreference: 'light' | 'dark' | 'system'
-}
-interface UrlMetadata {
-  title: string
-  description: string
-  imageUrl?: string
-  faviconUrl?: string
-}
-interface StoredUser {
-  id: number
-  email: string
-}
+- **Trigger**: push to `main`
+- **Steps**: checkout → Node 20 setup → `npm ci --legacy-peer-deps` (in `pwa/`) → `npm run build` (in `pwa/`) → deploy `pwa/dist` to GitHub Pages
+- **What it validates**: PWA TypeScript compiles (`tsc -b`) and Vite builds successfully
+- **What it does NOT check**: mobile app TypeScript, lint, or any tests
+
+To replicate CI locally:
+
+```bash
+cd pwa
+npm ci --legacy-peer-deps
+npm run build
 ```
 
-### Utility Functions (`lib/utils.ts` — both apps)
-
-```ts
-generateId()                           // 'timestamp_randomBase36'
-extractDomain(url)                     // strips 'www.', returns hostname
-normalizeUrl(url)                      // prepends 'https://' if missing
-getFaviconUrl(url)                     // Google S2 favicon service URL
-fetchUrlMetadata(url): UrlMetadata     // fetches + parses OG/Twitter meta tags
-searchFilter(query, ...fields)         // case-insensitive substring match across fields
-formatDate(timestamp)                  // locale-aware short date string
-```
-
-### Storage Keys
-
-Both apps use the same key prefix `pb_` for localStorage/AsyncStorage: `pb_bookmarks`, `pb_collections`, `pb_settings`.
-
-### New Entities
-
-- Generate IDs with `generateId()` from `lib/utils.ts`.
-- Timestamps use `Date.now()` (Unix ms).
-
-### Collection Colors & Icons
-
-- Pick colors from `COLLECTION_COLORS` and icons from `COLLECTION_ICONS` (both in `lib/theme.ts`).
-- RN: icons are Ionicons slugs (e.g. `'code-slash'`, `'musical-notes'`, `'game-controller'`).
-- PWA: icons are Lucide slugs (e.g. `'code-2'`, `'music'`, `'gamepad-2'`) — see `ICON_MAP` in `CollectionDetailPage.tsx`.
-
-### Code Style
-
-- Functional components only; no class components.
-- Use `useCallback` for handlers passed as props.
-- Keep screen/page logic in the screen file; extract reusable UI into `components/`.
-- No default exports from `lib/` utility files; named exports only. Screen/component files use default exports.
-
-**React Native specific:**
-
-- `StyleSheet.create` at the bottom of each file; group styles by component section.
-- Prefer explicit style composition: `[styles.base, { color: colors.text }]`.
-
-**PWA specific:**
-
-- All styles are inline objects — no `StyleSheet.create`.
-- Avoid adding CSS classes; use `index.css` only for truly global concerns.
-
-**Code review guidelines:**
-
-## 🎯 REVIEW OBJECTIVE
-
-For every review, you must:
-
-1. Run a complete analysis across **all dimensions** listed below
-2. Provide **code-level examples** for every issue — never just describe, always show fix
-3. Flag issues with severity: 🔴 **Critical** · 🟠 **Major** · 🟡 **Minor** · 🔵 **Suggestion**
-4. Never skip a dimension even if it looks clean — confirm explicitly
-
 ---
 
-## 📋 REVIEW DIMENSIONS
-
-### 1. 🟦 TypeScript Quality
-
-- [ ] No `any` — use `unknown`, generics, or proper union types
-- [ ] No unsafe type assertions (`as X`) without a comment justifying it
-- [ ] All props typed with `interface` or `type` — no implicit typing
-- [ ] Use `satisfies` operator where appropriate over `as`
-- [ ] Prefer `type` for unions/intersections, `interface` for object shapes
-- [ ] Enums replaced with `as const` objects or union string literals
-- [ ] No `ts-ignore` or `ts-nocheck` without a documented reason
-- [ ] Generic constraints used correctly (`<T extends object>` not just `<T>`)
-- [ ] Return types explicitly declared on exported functions/hooks
-- [ ] `strictNullChecks` respected — no implicit nullable access
-
----
-
-### 2. ⚛️ React Patterns & Hooks
-
-- [ ] Components are pure and side-effect-free (effects isolated in `useEffect`)
-- [ ] No stale closures — deps arrays in `useEffect`/`useMemo`/`useCallback` are complete
-- [ ] `useCallback`/`useMemo` used only where genuinely needed (profiling evidence)
-- [ ] No direct DOM manipulation — use refs only when necessary
-- [ ] State colocated at the lowest needed level (no prop drilling beyond 2 levels)
-- [ ] Context used correctly — not overused for frequently changing state
-- [ ] `key` props are stable identifiers (never array index for dynamic lists)
-- [ ] Controlled vs uncontrolled inputs handled consistently
-- [ ] `useEffect` cleanup functions present where subscriptions/timers are created
-- [ ] No async functions directly inside `useEffect` — use inner async or utility
-- [ ] `React.lazy` + `Suspense` used for route-level code splitting
-- [ ] No anonymous components (affects React DevTools + Fast Refresh)
-
----
-
-### 3. 🎨 Tailwind CSS v4 Compliance
-
-- [ ] **Semantic tokens only** — `bg-background`, `text-foreground`, `border-border`, `text-muted-foreground` etc.
-- [ ] **No arbitrary values** — `bg-[#fff]`, `w-[372px]`, `text-[14px]` are rejected
-- [ ] **No hardcoded colors** — use design tokens from `@theme` / CSS variables
-- [ ] Dark mode via `dark:` variants with semantic colors — not hardcoded dark values
-- [ ] No inline `style={{}}` for values achievable with Tailwind
-- [ ] No duplicate or conflicting utility classes on the same element
-- [ ] Responsive classes follow mobile-first order: `base → sm: → md: → lg: → xl:`
-- [ ] `cn()` utility from `@/lib/utils` used for conditional class merging (not template literals)
-- [ ] No `!important` overrides — refactor to fix specificity
-- [ ] `@apply` in CSS only for complex repeated patterns, not single utilities
-
----
-
-### 4. 🧩 shadcn/ui & Component Patterns
-
-- [ ] shadcn components imported from `@/components/ui/` barrel — never from `components/ui/button` directly
-- [ ] `CVA` variant patterns followed for any custom variants extending shadcn
-- [ ] `data-slot` attributes preserved when wrapping shadcn primitives
-- [ ] `asChild` prop used correctly (with `Slot`) — not overridden incorrectly
-- [ ] Radix accessibility props (`aria-*`, `role`, `data-state`) not removed
-- [ ] Component composition follows shadcn's compound pattern (`Card > CardHeader > CardTitle`)
-- [ ] Custom components in `components/shared/` — not mixed into `components/ui/`
-- [ ] Forms use `react-hook-form` + `zod` schema validation (when forms are involved)
-- [ ] `Button` variants match defined CVA variants — no ad-hoc styling that duplicates a variant
-
----
-
-### 5. 🗂️ Architecture & File Structure
-
-- [ ] Folder naming: **kebab-case** (`user-profile/`, not `UserProfile/`)
-- [ ] Component files: **PascalCase** `.tsx` (`UserCard.tsx`)
-- [ ] Hooks: **camelCase** prefixed `use` `.ts` (`useAuth.ts`)
-- [ ] Context: **PascalCase** + `Context` suffix `.tsx` (`AuthContext.tsx`)
-- [ ] Services: **camelCase** + `Service` suffix `.ts` (`authService.ts`)
-- [ ] Types files: **camelCase** + `Types` suffix `.ts` (`authTypes.ts`)
-- [ ] All feature/component folders export via `index.ts` barrel
-- [ ] Pages use **default exports** (required for `React.lazy`)
-- [ ] Feature-specific hooks in `src/hooks/` — not nested inside feature folders
-- [ ] No cross-feature direct imports — go through barrel exports
-- [ ] Route file MUST be `src/routes/index.tsx` (`.tsx` for JSX, not `.ts`)
-- [ ] No business logic inside page components — delegate to hooks/services
-
----
-
-### 6. 🔍 ESLint & Code Style
-
-- [ ] No ESLint errors or warnings (run `pnpm lint:fix` mentally)
-- [ ] `react-hooks/exhaustive-deps` — all hook deps declared
-- [ ] `react-refresh/only-export-components` — components and non-components not mixed in same file (except barrel `index.ts`)
-- [ ] `@typescript-eslint/no-unused-vars` — no dead variables or imports
-- [ ] `@typescript-eslint/no-explicit-any` — zero tolerance
-- [ ] No `console.log` left in production code (use a logger utility)
-- [ ] No commented-out code blocks committed
-- [ ] Prettier formatting consistent — indentation, quotes, trailing commas, semicolons
-- [ ] Import order: external libs → internal `@/` aliases → relative imports → types
-- [ ] No circular dependencies between modules
-
----
-
-### 7. 🏗️ Build & Vite Safety
-
-- [ ] `pnpm run build` would succeed — no type errors blocking `tsc -b`
-- [ ] No `import` of `.tsx` files from `.ts` context that breaks Vite HMR
-- [ ] Dynamic imports use `React.lazy(() => import(...))` pattern — not raw dynamic imports for components
-- [ ] No CommonJS `require()` — ESM only
-- [ ] Environment variables accessed via `import.meta.env` — not `process.env`
-- [ ] `import.meta.env` variables prefixed with `VITE_` for client exposure
-- [ ] No bundling of server-only code into client bundle
-- [ ] Assets imported correctly (SVG as component or URL, not string path hacks)
-- [ ] No large synchronous imports that block initial bundle (check for heavy lib misuse)
-- [ ] Barrel `index.ts` files don't accidentally re-export everything (causes large chunks)
-
----
-
-### 8. ⚡ Performance
-
-- [ ] No unnecessary re-renders — parent state changes don't repaint unrelated children
-- [ ] Heavy computations wrapped in `useMemo` with correct deps
-- [ ] Event handlers stable with `useCallback` when passed as props to memoized children
-- [ ] Lists use stable, unique `key` props (never `Math.random()` or index)
-- [ ] Images have explicit `width`/`height` to prevent layout shift (CLS)
-- [ ] Route-level code splitting via `React.lazy` (all routes in `routes/index.tsx`)
-- [ ] No `useEffect` with empty deps that fetches data — use a proper data-fetching pattern
-- [ ] No memory leaks (event listeners, timers, subscriptions cleaned up)
-- [ ] `React.memo` considered for pure presentational components receiving stable props
-
----
-
-### 9. ♿ Accessibility (a11y)
-
-- [ ] All interactive elements reachable via keyboard (`Tab`, `Enter`, `Space`, `Escape`)
-- [ ] `aria-label` or visible label on every icon-only button / input
-- [ ] Color contrast meets WCAG AA (4.5:1 text, 3:1 large text) — verify for custom tokens
-- [ ] Focus-visible styles present and not removed (`outline-none` only with `focus-visible:ring-*` replacement)
-- [ ] Form inputs have associated `<label>` or `aria-labelledby`
-- [ ] Error states communicated via `aria-describedby` or `aria-invalid`
-- [ ] Images have meaningful `alt` text (empty `alt=""` for decorative images)
-- [ ] Modal/dialogs trap focus and restore on close (Radix handles this — ensure not broken)
-- [ ] Dynamic content changes announced via `aria-live` regions where needed
-- [ ] No `tabIndex > 0` — use DOM order for tab sequence
-
----
-
-### 10. 🔒 Security
-
-- [ ] No secrets, API keys, or tokens in source code or `.env` committed to git
-- [ ] `dangerouslySetInnerHTML` absent — if present, input must be sanitized with DOMPurify
-- [ ] User inputs sanitized before rendering or sending to API
-- [ ] No `eval()` or `new Function()` usage
-- [ ] External URLs validated before use in `href`/`src` (prevent open redirect / XSS)
-- [ ] Dependencies checked — no known vulnerable packages (`pnpm audit`)
-- [ ] No sensitive data stored in `localStorage` unencrypted
-- [ ] CORS and auth headers handled server-side, not leaked in client code
-
----
-
-### 11. 🧪 Testability (if tests exist)
-
-- [ ] Test files co-located: `Component.test.tsx` next to `Component.tsx`
-- [ ] Tests cover: render, user interaction, edge cases, error states
-- [ ] No tests that test implementation details (test behavior, not internals)
-- [ ] Mocks scoped correctly — no global state leaking between tests
-- [ ] Async tests use `waitFor` / `findBy*` correctly
-
----
-
-## 📤 REQUIRED OUTPUT FORMAT
-
-Structure your review exactly as follows:
-
----
-
-### ✅ Summary
-
-> 2–3 line overall impression. Tone: honest, professional, constructive.
-
----
-
-### 🚀 Strengths
-
-> Bullet list of genuine positives. Be specific — reference actual code.
-
----
-
-### 🔴 Critical Issues
-
-> Must fix before merge. Include before/after code examples.
-
----
-
-### 🟠 Major Issues
-
-> Should fix before merge. May affect functionality, performance, or maintainability.
-
----
-
-### 🟡 Minor Issues
-
-> Non-blocking but should be addressed. Style, naming, small inconsistencies.
-
----
-
-### 🔵 Suggestions
-
-> Optional improvements — better patterns, future-proofing, DX improvements.
-
----
-
-### 🧹 Refactoring Opportunities
-
-> Specific code blocks that can be simplified. Show the improved version.
-
----
-
-### 🏗️ Build & Lint Check
-
-> Would `pnpm run type-check` and `pnpm lint:fix` pass? Flag anything that would fail.
-
----
-
-### 🧪 Missing Tests
-
-> List specific cases that lack test coverage (if test files are in scope).
-
----
-
-### 📦 Final Recommendation
-
-**[ ] ✅ Approved** — Ready to merge as-is
-**[ ] ✅ Approved with suggestions** — Merge after addressing minor issues
-**[ ] 🔄 Request Changes** — Must fix critical/major issues before merge
-**[ ] ❌ Reject** — Fundamental architectural or security problems
-
-**Justification:** _(1–2 sentences explaining the decision)_
-
----
-
-> Review strictly against the PROJECT TECH STACK defined above. Do not import assumptions from other stacks.
+## Making Changes Safely
+
+1. **Mobile app change**: Run `npx tsc --noEmit` (from root) and `npm run lint`. Both should pass (the one pre-existing warning is acceptable).
+2. **PWA change**: Run `cd pwa && npm run build`. TypeScript errors will fail the CI. Lint errors are pre-existing and do not block CI.
+3. **Backend change**: No local validation tooling. Manually review PHP logic.
+4. **Always install before building**: `npm install` (root) or `npm install --legacy-peer-deps` (pwa).
+
+## Important Notes
+
+- The `@/` path alias maps to the **repo root**, not a `src/` directory.
+- The PWA's `pwa/src/lib/` is a **separate copy** of `lib/` at the root — changes to one do not automatically apply to the other.
+- The app has no automated tests (no Jest, no Playwright, no test scripts).
+- `npm run reset-project` (root) is a destructive scaffold reset — do not run it.
+- The `expo-env.d.ts` file is auto-generated by Expo; do not edit manually.
