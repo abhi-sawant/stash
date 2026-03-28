@@ -38,7 +38,6 @@ export default function ModalPage({
         background: colors.background,
         display: 'flex',
         flexDirection: 'column',
-        maxWidth: 430,
         margin: '0 auto',
       }}>
       {/* Header */}

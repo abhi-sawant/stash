@@ -30,6 +30,13 @@ import {
   typography,
 } from '../../lib/theme'
 import { fetchUrlMetadata, getFaviconUrl, normalizeUrl } from '../../lib/utils'
+function buildPreviewUriCandidates(uri: string): string[] {
+  if (!uri.startsWith('http')) return [uri]
+
+  const variants = [uri, uri.replace(/@/g, '%40'), encodeURI(uri), encodeURI(uri).replace(/@/g, '%40')]
+
+  return Array.from(new Set(variants.filter(Boolean)))
+}
 
 export default function AddBookmarkScreen() {
   const scheme = useAppColorScheme()
@@ -44,6 +51,8 @@ export default function AddBookmarkScreen() {
   const [tags, setTags] = useState<string[]>([])
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null)
   const [imageUri, setImageUri] = useState<string | undefined>()
+  const [imagePreviewFailed, setImagePreviewFailed] = useState(false)
+  const [previewUriIndex, setPreviewUriIndex] = useState(0)
   const [faviconUri, setFaviconUri] = useState<string | undefined>()
   const [fetchingMeta, setFetchingMeta] = useState(false)
   const [showCollectionPicker, setShowCollectionPicker] = useState(false)
@@ -67,7 +76,11 @@ export default function AddBookmarkScreen() {
       const meta = await fetchUrlMetadata(targetUrl)
       if (meta.title) setTitle(meta.title)
       if (meta.description) setSubtitle(meta.description)
-      if (meta.imageUrl) setImageUri(meta.imageUrl)
+      if (meta.imageUrl) {
+        setImageUri(meta.imageUrl)
+        setImagePreviewFailed(false)
+        setPreviewUriIndex(0)
+      }
       if (meta.faviconUrl) setFaviconUri(meta.faviconUrl)
       setUrl(targetUrl)
     } catch {
@@ -95,6 +108,9 @@ export default function AddBookmarkScreen() {
 
   const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
 
+  const previewUriCandidates = imageUri ? buildPreviewUriCandidates(imageUri) : []
+  const previewUri = previewUriCandidates[previewUriIndex] ?? imageUri
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
@@ -109,6 +125,8 @@ export default function AddBookmarkScreen() {
     })
     if (!result.canceled) {
       setImageUri(result.assets[0].uri)
+      setImagePreviewFailed(false)
+      setPreviewUriIndex(0)
     }
   }
 
@@ -192,14 +210,42 @@ export default function AddBookmarkScreen() {
 
           {/* Custom Image */}
           {imageUri ? (
-            <TouchableOpacity onPress={pickImage} style={styles.imagePreview}>
-              <Image source={{ uri: imageUri }} style={styles.previewImg} resizeMode='cover' />
-              <>{console.log('ggg')}</>
-              <View style={styles.imageOverlay}>
-                <Ionicons name='camera' size={22} color='#fff' />
-                <Text style={styles.imageOverlayText}>Change Image</Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.imagePreview}>
+              <TouchableOpacity onPress={pickImage} activeOpacity={0.85}>
+                {!imagePreviewFailed ? (
+                  <Image
+                    key={`${imageUri}_${previewUriIndex}`}
+                    source={{ uri: previewUri }}
+                    style={styles.previewImg}
+                    resizeMode='cover'
+                    onError={() => {
+                      if (previewUriIndex < previewUriCandidates.length - 1) {
+                        setPreviewUriIndex((prev) => prev + 1)
+                        return
+                      }
+                      setImagePreviewFailed(true)
+                    }}
+                    onLoad={() => setImagePreviewFailed(false)}
+                  />
+                ) : (
+                  <View style={[styles.previewFallback, { backgroundColor: colors.surfaceVariant }]}>
+                    <Ionicons name='image-outline' size={26} color={colors.textSecondary} />
+                    <Text style={[styles.previewFallbackText, { color: colors.textSecondary }]}>
+                      Preview unavailable
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setImageUri(undefined)
+                  setImagePreviewFailed(false)
+                  setPreviewUriIndex(0)
+                }}
+                style={styles.imageRemoveBtn}>
+                <Ionicons name='close' size={14} color='#fff' />
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={[styles.imagePicker, { backgroundColor: colors.surfaceVariant, borderColor: colors.border }]}
@@ -484,17 +530,26 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 16 / 9,
   },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+  previewFallback: {
+    width: '100%',
+    aspectRatio: 16 / 9,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  imageOverlayText: {
-    color: '#fff',
-    ...typography.labelMedium,
+  previewFallbackText: {
+    ...typography.bodySmall,
+  },
+  imageRemoveBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagePicker: {
     marginTop: spacing.lg,
