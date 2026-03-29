@@ -1,6 +1,15 @@
+import {
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+  useFonts,
+} from '@expo-google-fonts/space-grotesk'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import { Stack } from 'expo-router'
+import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
+import { useEffect } from 'react'
 import 'react-native-reanimated'
 
 import UpdatePrompt from '@/components/UpdatePrompt'
@@ -13,6 +22,8 @@ import { BookmarksProvider } from '../lib/context'
 export const unstable_settings = {
   anchor: '(tabs)',
 }
+
+void SplashScreen.preventAutoHideAsync()
 
 function AppShell() {
   const colorScheme = useAppColorScheme()
@@ -43,6 +54,23 @@ function AppShell() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontsError] = useFonts({
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+  })
+
+  useEffect(() => {
+    if (fontsLoaded || fontsError) {
+      void SplashScreen.hideAsync()
+    }
+  }, [fontsLoaded, fontsError])
+
+  if (!fontsLoaded && !fontsError) {
+    return null
+  }
+
   return (
     <AuthProvider>
       <BookmarksProvider>

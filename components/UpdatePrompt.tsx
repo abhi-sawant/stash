@@ -16,7 +16,7 @@ export default function UpdatePrompt({ updateInfo, onDismiss, onSkipVersion }: P
   const colors = getColors(scheme)
   const handleDownload = useCallback(() => {
     // Redirect to the latest GitHub release page
-    const url = 'https://github.com/slowatcoding/stash/releases/latest'
+    const url = 'https://github.com/abhi-sawant/stash/releases/latest'
     if (Platform.OS === 'web') {
       window.open(url, '_blank')
     } else {
