@@ -75,12 +75,13 @@ export async function getLastSyncTime(): Promise<number | null> {
   return raw ? parseInt(raw, 10) : null
 }
 
-/** Uploads a data snapshot to the server. */
+/** Uploads a data snapshot to the server and records the sync time. */
 export async function uploadData(data: SyncData): Promise<void> {
   await api.backup.upload({ ...data, exportedAt: Date.now(), version: 1 })
+  await AsyncStorage.setItem(LAST_SYNC_TIME_KEY, Date.now().toString())
 }
 
-/** Reads current data from AsyncStorage and uploads it, recording the sync time. */
+/** Reads current data from AsyncStorage and uploads it. */
 export async function uploadBackup(): Promise<void> {
   const data: SyncData = {
     bookmarks: await loadBookmarks(),
@@ -88,7 +89,6 @@ export async function uploadBackup(): Promise<void> {
     settings: await loadSettings(),
   }
   await uploadData(data)
-  await AsyncStorage.setItem(LAST_SYNC_TIME_KEY, Date.now().toString())
 }
 
 /**

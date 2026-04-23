@@ -8,7 +8,7 @@ import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
 import { useAuth } from '../../lib/auth-context'
 import { createLocalBackup, restoreFromBackup, saveBackupToDownloads } from '../../lib/backup'
 import { useBookmarks } from '../../lib/context'
-import { getLastSyncTime, uploadBackup } from '../../lib/sync'
+import { fetchAndMerge, getLastSyncTime, uploadBackup, uploadData } from '../../lib/sync'
 import { getColors, radius, spacing, typography } from '../../lib/theme'
 import { AppSettings } from '../../lib/types'
 
@@ -21,7 +21,7 @@ const THEME_OPTIONS: { label: string; value: AppSettings['themePreference']; ico
 export default function SettingsScreen() {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
-  const { settings, updateSettings, bookmarks, collections } = useBookmarks()
+  const { settings, updateSettings, bookmarks, collections, restore } = useBookmarks()
   const { user, logout } = useAuth()
   const router = useRouter()
   const [backupLoading, setBackupLoading] = useState(false)
@@ -39,10 +39,18 @@ export default function SettingsScreen() {
   const handleSyncNow = async () => {
     setSyncLoading(true)
     try {
-      await uploadBackup()
+      const local = { bookmarks, collections, settings }
+      const result = await fetchAndMerge(local)
+      if (result) {
+        restore(result.merged)
+        await uploadData(result.merged)
+      } else {
+        // Already up to date with server — just upload local data
+        await uploadBackup()
+      }
       const ts = await getLastSyncTime()
       if (ts) setLastSyncLabel(new Date(ts).toLocaleString())
-      Alert.alert('Backed Up', 'Your bookmarks have been backed up to the cloud.')
+      Alert.alert('Synced', 'Your bookmarks have been synced with the cloud.')
     } catch (e: any) {
       Alert.alert('Sync Failed', e.message ?? 'Could not connect to the server.')
     } finally {
