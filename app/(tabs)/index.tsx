@@ -31,23 +31,20 @@ function buildColumns<T>(items: T[], numCols: number): T[][] {
 export default function HomeScreen() {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
-  const { bookmarks, collections, deleteBookmark, getAllTags } = useBookmarks()
+  const { bookmarks, collections, deleteBookmark } = useBookmarks()
   const { width } = useWindowDimensions()
 
   const [query, setQuery] = useState('')
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null)
-  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
 
   const scrollRef = useRef<ScrollView>(null)
   const numColumns = getColumnCount(width)
-  const allTags = getAllTags()
 
   const filtered = bookmarks.filter((b) => {
     if (activeCollectionId && b.collectionId !== activeCollectionId) return false
-    if (activeTag && !b.tags.includes(activeTag)) return false
     if (query) {
-      return searchFilter(query, b.title, b.subtitle, b.url, ...b.tags)
+      return searchFilter(query, b.title, b.subtitle, b.url)
     }
     return true
   })
@@ -104,10 +101,9 @@ export default function HomeScreen() {
           <FilterRow>
             <FilterChip
               label='All'
-              active={!activeCollectionId && !activeTag}
+              active={!activeCollectionId}
               onPress={() => {
                 setActiveCollectionId(null)
-                setActiveTag(null)
               }}
               icon='apps'
             />
@@ -118,25 +114,8 @@ export default function HomeScreen() {
                 active={activeCollectionId === col.id}
                 onPress={() => {
                   setActiveCollectionId(activeCollectionId === col.id ? null : col.id)
-                  setActiveTag(null)
                 }}
                 icon='folder'
-              />
-            ))}
-          </FilterRow>
-        )}
-
-        {allTags.length > 0 && (
-          <FilterRow>
-            {allTags.map((tag) => (
-              <FilterChip
-                key={tag}
-                label={`#${tag}`}
-                active={activeTag === tag}
-                onPress={() => {
-                  setActiveTag(activeTag === tag ? null : tag)
-                  setActiveCollectionId(null)
-                }}
               />
             ))}
           </FilterRow>
@@ -147,9 +126,9 @@ export default function HomeScreen() {
       {filtered.length === 0 ? (
         <EmptyState
           icon='bookmark-outline'
-          title={query || activeCollectionId || activeTag ? 'No matches found' : 'No bookmarks yet'}
+          title={query || activeCollectionId ? 'No matches found' : 'No bookmarks yet'}
           subtitle={
-            query || activeCollectionId || activeTag
+            query || activeCollectionId
               ? 'Try a different search or filter'
               : 'Tap the + button to save your first link'
           }

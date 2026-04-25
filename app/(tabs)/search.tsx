@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
 import BookmarkMasonryCard from '../../components/BookmarkMasonryCard'
 import EmptyState from '../../components/EmptyState'
-import { FilterChip, FilterRow, SearchBar } from '../../components/SearchBar'
+import { SearchBar } from '../../components/SearchBar'
 import { useBookmarks } from '../../lib/context'
 import { getColors, radius, spacing, typography } from '../../lib/theme'
 import { Bookmark, Collection } from '../../lib/types'
@@ -30,21 +30,18 @@ function buildColumns<T>(items: T[], numCols: number): T[][] {
 export default function SearchScreen() {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
-  const { bookmarks, collections, settings, deleteBookmark, getAllTags } = useBookmarks()
+  const { bookmarks, collections, settings, deleteBookmark } = useBookmarks()
 
   const { width } = useWindowDimensions()
   const [query, setQuery] = useState('')
-  const [activeTag, setActiveTag] = useState<string | null>(null)
 
-  const allTags = getAllTags()
   const numColumns = getColumnCount(width)
 
   const filtered = bookmarks.filter((b) => {
-    if (activeTag && !b.tags.includes(activeTag)) return false
     if (query.trim()) {
-      return searchFilter(query, b.title, b.subtitle, b.url, ...b.tags)
+      return searchFilter(query, b.title, b.subtitle, b.url)
     }
-    return activeTag ? true : false
+    return false
   })
 
   const columns = buildColumns(filtered, numColumns)
@@ -78,7 +75,7 @@ export default function SearchScreen() {
     ])
   }
 
-  const hasResults = query.trim().length > 0 || activeTag !== null
+  const hasResults = query.trim().length > 0
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -90,33 +87,15 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
             autoFocus={false}
-            placeholder='Search by title, URL, or tag...'
+            placeholder='Search by title, URL, or description...'
           />
         </View>
-        {allTags.length > 0 && (
-          <FilterRow>
-            {allTags.map((tag) => {
-              return (
-                <FilterChip
-                  key={tag}
-                  label={`#${tag}`}
-                  active={activeTag === tag}
-                  onPress={() => setActiveTag(activeTag === tag ? null : tag)}
-                />
-              )
-            })}
-          </FilterRow>
-        )}
       </View>
 
       {/* Results */}
       {hasResults ? (
         filtered.length === 0 ? (
-          <EmptyState
-            icon='search-outline'
-            title='No results found'
-            subtitle={`Nothing matches "${query || activeTag}"`}
-          />
+          <EmptyState icon='search-outline' title='No results found' subtitle={`Nothing matches "${query}"`} />
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -145,16 +124,12 @@ export default function SearchScreen() {
           </View>
           <Text style={[styles.promptTitle, { color: colors.text }]}>Search your bookmarks</Text>
           <Text style={[styles.promptText, { color: colors.textSecondary }]}>
-            Find links by title, URL, tags, or description. Browse by tag using the chips above.
+            Find links by title, URL, or description.
           </Text>
           <View style={styles.statsRow}>
             <View style={[styles.statBadge, { backgroundColor: colors.primaryContainer }]}>
               <Text style={[styles.statNum, { color: colors.primary }]}>{bookmarks.length}</Text>
               <Text style={[styles.statLabel, { color: colors.onPrimaryContainer }]}>Links</Text>
-            </View>
-            <View style={[styles.statBadge, { backgroundColor: colors.primaryContainer }]}>
-              <Text style={[styles.statNum, { color: colors.primary }]}>{allTags.length}</Text>
-              <Text style={[styles.statLabel, { color: colors.onPrimaryContainer }]}>Tags</Text>
             </View>
             <View style={[styles.statBadge, { backgroundColor: colors.primaryContainer }]}>
               <Text style={[styles.statNum, { color: colors.primary }]}>{collections.length}</Text>

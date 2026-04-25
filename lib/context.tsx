@@ -1,13 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react'
 import { getAuthToken } from './auth-storage'
 import {
-  defaultSettings,
-  loadBookmarks,
-  loadCollections,
-  loadSettings,
-  saveBookmarks,
-  saveCollections,
-  saveSettings,
+    defaultSettings,
+    loadBookmarks,
+    loadCollections,
+    loadSettings,
+    saveBookmarks,
+    saveCollections,
+    saveSettings,
 } from './storage'
 import { uploadData } from './sync'
 import { AppSettings, Bookmark, Collection } from './types'
@@ -108,7 +108,6 @@ interface BookmarksContextValue extends State {
   deleteCollection: (id: string) => void
   updateSettings: (data: Partial<AppSettings>) => void
   restore: (data: { bookmarks: Bookmark[]; collections: Collection[]; settings: AppSettings }) => void
-  getAllTags: () => string[]
 }
 
 const BookmarksContext = createContext<BookmarksContextValue | null>(null)
@@ -236,12 +235,6 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'RESTORE', payload: data })
   }, [])
 
-  const getAllTags = useCallback((): string[] => {
-    const tagSet = new Set<string>()
-    state.bookmarks.forEach((b) => b.tags.forEach((t) => tagSet.add(t)))
-    return Array.from(tagSet).sort()
-  }, [state.bookmarks])
-
   return (
     <BookmarksContext.Provider
       value={{
@@ -254,7 +247,6 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
         deleteCollection,
         updateSettings,
         restore,
-        getAllTags,
       }}>
       {children}
     </BookmarksContext.Provider>

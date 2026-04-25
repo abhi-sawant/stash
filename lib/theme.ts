@@ -11,6 +11,16 @@ export const COLLECTION_COLORS = [
   '#65A30D',
   '#9333EA',
   '#EA580C',
+  '#0F766E',
+  '#E11D48',
+  '#B45309',
+  '#BE185D',
+  '#1D4ED8',
+  '#15803D',
+  '#C2410C',
+  '#6D28D9',
+  '#0369A1',
+  '#166534',
 ]
 
 export const COLLECTION_ICONS = [
@@ -29,24 +39,22 @@ export const COLLECTION_ICONS = [
   'fitness',
   'cart',
   'airplane',
+  'restaurant',
+  'flask',
+  'leaf',
+  'car',
+  'home',
+  'people',
+  'newspaper',
+  'trophy',
+  'hammer',
+  'wallet',
+  'paint-brush',
+  'planet',
+  'headset',
+  'medkit',
+  'paw',
 ]
-
-export const TAG_COLORS = [
-  { bg: '#EDE9FE', text: '#5B21B6' },
-  { bg: '#DBEAFE', text: '#1D4ED8' },
-  { bg: '#D1FAE5', text: '#065F46' },
-  { bg: '#FEF3C7', text: '#92400E' },
-  { bg: '#FCE7F3', text: '#9D174D' },
-  { bg: '#CFFAFE', text: '#155E75' },
-]
-
-export function getTagColor(tag: string) {
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
-}
 
 const lightColors = {
   primary: '#7C3AED',

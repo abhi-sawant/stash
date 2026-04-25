@@ -2,15 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useState } from 'react'
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -22,7 +22,7 @@ export default function AddCollectionScreen() {
   const scheme = useAppColorScheme()
   const colors = getColors(scheme)
   const { addCollection, updateCollection, collections } = useBookmarks()
-  const { edit: editId, parentId } = useLocalSearchParams<{ edit?: string; parentId?: string }>()
+  const { edit: editId } = useLocalSearchParams<{ edit?: string }>()
 
   const existingCollection = editId ? collections.find((c) => c.id === editId) : undefined
   const isEditing = !!existingCollection
@@ -30,10 +30,7 @@ export default function AddCollectionScreen() {
   const [name, setName] = useState(existingCollection?.name ?? '')
   const [selectedColor, setSelectedColor] = useState(existingCollection?.color ?? COLLECTION_COLORS[0])
   const [selectedIcon, setSelectedIcon] = useState(existingCollection?.icon ?? COLLECTION_ICONS[0])
-  const [selectedParent, setSelectedParent] = useState<string | null>(existingCollection?.parentId ?? parentId ?? null)
   const [saving, setSaving] = useState(false)
-
-  const rootCollections = collections.filter((c) => !c.parentId && c.id !== editId)
 
   const handleSave = () => {
     if (!name.trim()) return
@@ -44,14 +41,12 @@ export default function AddCollectionScreen() {
         name: name.trim(),
         color: selectedColor,
         icon: selectedIcon,
-        parentId: selectedParent ?? undefined,
       })
     } else {
       addCollection({
         name: name.trim(),
         color: selectedColor,
         icon: selectedIcon,
-        parentId: selectedParent ?? undefined,
       })
     }
     router.back()
@@ -133,7 +128,7 @@ export default function AddCollectionScreen() {
                   styles.iconSwatch,
                   {
                     backgroundColor: selectedIcon === icon ? `${selectedColor}20` : colors.surfaceVariant,
-                    borderColor: selectedIcon === icon ? selectedColor : 'transparent',
+                    borderColor: selectedIcon === icon ? selectedColor : colors.inputBorder,
                   },
                 ]}
                 onPress={() => setSelectedIcon(icon)}>
@@ -145,31 +140,6 @@ export default function AddCollectionScreen() {
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Parent collection */}
-          {rootCollections.length > 0 && (
-            <>
-              <Label text='Parent Collection (optional)' colors={colors} />
-              <View style={[styles.parentOptions, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <TouchableOpacity
-                  style={[styles.parentOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
-                  onPress={() => setSelectedParent(null)}>
-                  <Text style={[styles.parentOptionText, { color: colors.textSecondary }]}>None</Text>
-                  {!selectedParent && <Ionicons name='checkmark' size={18} color={colors.primary} />}
-                </TouchableOpacity>
-                {rootCollections.map((col) => (
-                  <TouchableOpacity
-                    key={col.id}
-                    style={[styles.parentOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
-                    onPress={() => setSelectedParent(col.id)}>
-                    <View style={[styles.colDot, { backgroundColor: col.color }]} />
-                    <Text style={[styles.parentOptionText, { color: colors.text }]}>{col.name}</Text>
-                    {selectedParent === col.id && <Ionicons name='checkmark' size={18} color={colors.primary} />}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -231,6 +201,7 @@ const styles = StyleSheet.create({
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
   colorSwatch: {
@@ -251,6 +222,7 @@ const styles = StyleSheet.create({
   iconGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.sm,
   },
   iconSwatch: {
@@ -261,18 +233,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
   },
-  parentOptions: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  parentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  parentOptionText: { ...typography.bodyMedium, flex: 1 },
   colDot: { width: 12, height: 12, borderRadius: 6 },
 })

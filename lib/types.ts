@@ -5,7 +5,6 @@ export interface Bookmark {
   subtitle: string
   imageUri?: string
   faviconUri?: string
-  tags: string[]
   collectionId?: string
   createdAt: number
   updatedAt: number
@@ -14,7 +13,6 @@ export interface Bookmark {
 export interface Collection {
   id: string
   name: string
-  parentId?: string
   color: string
   icon: string
   createdAt: number

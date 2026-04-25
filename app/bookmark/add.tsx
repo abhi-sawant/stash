@@ -4,31 +4,27 @@ import * as ImagePicker from 'expo-image-picker'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
+import MetadataWebView from '../../components/MetadataWebView'
 import { useBookmarks } from '../../lib/context'
-import {
-  COLLECTION_COLORS,
-  COLLECTION_ICONS,
-  getColors,
-  getTagColor,
-  radius,
-  spacing,
-  typography,
-} from '../../lib/theme'
+import { COLLECTION_COLORS, COLLECTION_ICONS, getColors, radius, spacing, typography } from '../../lib/theme'
+import { UrlMetadata } from '../../lib/types'
 import { fetchUrlMetadata, getFaviconUrl, normalizeUrl } from '../../lib/utils'
 function buildPreviewUriCandidates(uri: string): string[] {
   if (!uri.startsWith('http')) return [uri]
@@ -47,14 +43,13 @@ export default function AddBookmarkScreen() {
   const [url, setUrl] = useState(initialUrl ?? '')
   const [title, setTitle] = useState('')
   const [subtitle, setSubtitle] = useState('')
-  const [tagInput, setTagInput] = useState('')
-  const [tags, setTags] = useState<string[]>([])
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null)
   const [imageUri, setImageUri] = useState<string | undefined>()
   const [imagePreviewFailed, setImagePreviewFailed] = useState(false)
   const [previewUriIndex, setPreviewUriIndex] = useState(0)
   const [faviconUri, setFaviconUri] = useState<string | undefined>()
   const [fetchingMeta, setFetchingMeta] = useState(false)
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null)
   const [showCollectionPicker, setShowCollectionPicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showNewColForm, setShowNewColForm] = useState(false)
@@ -68,21 +63,43 @@ export default function AddBookmarkScreen() {
     if (initialUrlRef.current) handleFetchMeta(initialUrlRef.current)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFetchMeta = async (urlToFetch?: string) => {
+  const applyMetadata = (meta: UrlMetadata) => {
+    if (meta.title) setTitle(meta.title)
+    if (meta.description) setSubtitle(meta.description)
+    if (meta.imageUrl) {
+      setImageUri(meta.imageUrl)
+      setImagePreviewFailed(false)
+      setPreviewUriIndex(0)
+    }
+    if (meta.faviconUrl) setFaviconUri(meta.faviconUrl)
+  }
+
+  const handleFetchMeta = (urlToFetch?: string) => {
     const targetUrl = normalizeUrl(urlToFetch ?? url)
     if (!targetUrl) return
+    setUrl(targetUrl)
     setFetchingMeta(true)
+    // Try WebView first — real browser engine handles JS-rendered pages & bot detection
+    setWebViewUrl(targetUrl)
+  }
+
+  const handleWebViewResult = (meta: UrlMetadata) => {
+    setWebViewUrl(null)
+    setFetchingMeta(false)
+    applyMetadata(meta)
+  }
+
+  const handleWebViewError = async () => {
+    // WebView failed or timed out — fall back to direct fetch
+    setWebViewUrl(null)
+    const targetUrl = normalizeUrl(url)
+    if (!targetUrl) {
+      setFetchingMeta(false)
+      return
+    }
     try {
       const meta = await fetchUrlMetadata(targetUrl)
-      if (meta.title) setTitle(meta.title)
-      if (meta.description) setSubtitle(meta.description)
-      if (meta.imageUrl) {
-        setImageUri(meta.imageUrl)
-        setImagePreviewFailed(false)
-        setPreviewUriIndex(0)
-      }
-      if (meta.faviconUrl) setFaviconUri(meta.faviconUrl)
-      setUrl(targetUrl)
+      applyMetadata(meta)
     } catch {
       // Silently fail
     } finally {
@@ -97,16 +114,6 @@ export default function AddBookmarkScreen() {
       handleFetchMeta(text)
     }
   }
-
-  const addTag = () => {
-    const trimmed = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed])
-    }
-    setTagInput('')
-  }
-
-  const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
 
   const previewUriCandidates = imageUri ? buildPreviewUriCandidates(imageUri) : []
   const previewUri = previewUriCandidates[previewUriIndex] ?? imageUri
@@ -141,7 +148,6 @@ export default function AddBookmarkScreen() {
       url: normalized,
       title: title.trim() || normalized,
       subtitle: subtitle.trim(),
-      tags,
       collectionId: selectedCollection ?? undefined,
       imageUri,
       faviconUri: faviconUri || getFaviconUrl(normalized),
@@ -286,44 +292,6 @@ export default function AddBookmarkScreen() {
             textAlignVertical='top'
           />
 
-          {/* Tags */}
-          <Label text='Tags (optional)' colors={colors} />
-          <View style={[styles.tagInputRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-            <TextInput
-              style={[styles.input, { flex: 1, color: colors.text }]}
-              value={tagInput}
-              onChangeText={setTagInput}
-              placeholder='Add a tag...'
-              placeholderTextColor={colors.textTertiary}
-              autoCapitalize='none'
-              autoCorrect={false}
-              returnKeyType='done'
-              onSubmitEditing={addTag}
-            />
-            <TouchableOpacity
-              onPress={addTag}
-              disabled={!tagInput.trim()}
-              style={[styles.addTagBtn, { backgroundColor: colors.primary, opacity: tagInput.trim() ? 1 : 0.4 }]}>
-              <Ionicons name='add' size={20} color='#fff' />
-            </TouchableOpacity>
-          </View>
-          {tags.length > 0 && (
-            <View style={styles.tagsRow}>
-              {tags.map((tag) => {
-                const tc = getTagColor(tag)
-                return (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[styles.tagChip, { backgroundColor: tc.bg }]}
-                    onPress={() => removeTag(tag)}>
-                    <Text style={[styles.tagChipText, { color: tc.text }]}>#{tag}</Text>
-                    <Ionicons name='close' size={12} color={tc.text} />
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          )}
-
           {/* Collection */}
           <Label text='Collection (optional)' colors={colors} />
           <TouchableOpacity
@@ -332,7 +300,7 @@ export default function AddBookmarkScreen() {
               styles.pickerRow,
               { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
             ]}
-            onPress={() => setShowCollectionPicker(!showCollectionPicker)}>
+            onPress={() => setShowCollectionPicker(true)}>
             {selectedCol ? (
               <>
                 <View style={[styles.colDot, { backgroundColor: selectedCol.color }]} />
@@ -341,112 +309,133 @@ export default function AddBookmarkScreen() {
             ) : (
               <Text style={[styles.pickerText, { color: colors.textTertiary }]}>No collection</Text>
             )}
-            <Ionicons
-              name={showCollectionPicker ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color={colors.textTertiary}
-            />
+            <Ionicons name='chevron-down' size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
-          {showCollectionPicker && (
-            <View style={[styles.collectionList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <TouchableOpacity
-                style={[styles.collectionOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
-                onPress={() => {
-                  setSelectedCollection(null)
-                  setShowCollectionPicker(false)
-                }}>
-                <Text style={[styles.pickerText, { color: colors.textSecondary }]}>None</Text>
-                {!selectedCollection && <Ionicons name='checkmark' size={18} color={colors.primary} />}
-              </TouchableOpacity>
-              {collections.map((col) => (
+          {/* Collection picker modal */}
+          <Modal
+            visible={showCollectionPicker}
+            transparent
+            animationType='fade'
+            onRequestClose={() => {
+              setShowCollectionPicker(false)
+              setShowNewColForm(false)
+            }}>
+            <TouchableWithoutFeedback
+              onPress={() => {
+                setShowCollectionPicker(false)
+                setShowNewColForm(false)
+              }}>
+              <View style={styles.modalBackdrop} />
+            </TouchableWithoutFeedback>
+            <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+              <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Collection</Text>
+              <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
                 <TouchableOpacity
-                  key={col.id}
                   style={[styles.collectionOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
                   onPress={() => {
-                    setSelectedCollection(col.id)
+                    setSelectedCollection(null)
                     setShowCollectionPicker(false)
-                    setShowNewColForm(false)
                   }}>
-                  <View style={[styles.colDot, { backgroundColor: col.color }]} />
-                  <Text style={[styles.pickerText, { color: colors.text }]}>{col.name}</Text>
-                  {selectedCollection === col.id && <Ionicons name='checkmark' size={18} color={colors.primary} />}
+                  <Text style={[styles.pickerText, { color: colors.textSecondary }]}>None</Text>
+                  {!selectedCollection && <Ionicons name='checkmark' size={18} color={colors.primary} />}
                 </TouchableOpacity>
-              ))}
+                {collections.map((col) => (
+                  <TouchableOpacity
+                    key={col.id}
+                    style={[styles.collectionOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
+                    onPress={() => {
+                      setSelectedCollection(col.id)
+                      setShowCollectionPicker(false)
+                      setShowNewColForm(false)
+                    }}>
+                    <View style={[styles.colDot, { backgroundColor: col.color }]} />
+                    <Text style={[styles.pickerText, { color: colors.text }]}>{col.name}</Text>
+                    {selectedCollection === col.id && <Ionicons name='checkmark' size={18} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
 
-              {/* New collection inline form */}
-              {showNewColForm ? (
-                <View style={[styles.newColForm, { borderTopColor: colors.divider }]}>
-                  <View style={[styles.newColColorPicker]}>
-                    {COLLECTION_COLORS.map((c) => (
-                      <TouchableOpacity
-                        key={c}
+                {/* New collection form */}
+                {showNewColForm ? (
+                  <View style={[styles.newColForm, { borderTopColor: colors.divider }]}>
+                    <View style={styles.newColColorPicker}>
+                      {COLLECTION_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          style={[
+                            styles.newColSwatch,
+                            { backgroundColor: c },
+                            newColColor === c && { borderWidth: 2.5, borderColor: '#fff', opacity: 1 },
+                            newColColor !== c && { opacity: 0.65 },
+                          ]}
+                          onPress={() => setNewColColor(c)}>
+                          {newColColor === c && <Ionicons name='checkmark' size={12} color='#fff' />}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.newColInputRow}>
+                      <View
                         style={[
-                          styles.newColSwatch,
-                          { backgroundColor: c },
-                          newColColor === c && { borderWidth: 2.5, borderColor: '#fff', opacity: 1 },
-                          newColColor !== c && { opacity: 0.65 },
+                          styles.colDot,
+                          { backgroundColor: newColColor, width: 10, height: 10, borderRadius: 5 },
                         ]}
-                        onPress={() => setNewColColor(c)}>
-                        {newColColor === c && <Ionicons name='checkmark' size={12} color='#fff' />}
+                      />
+                      <TextInput
+                        style={[styles.newColInput, { color: colors.text, flex: 1 }]}
+                        value={newColName}
+                        onChangeText={setNewColName}
+                        placeholder='Collection name...'
+                        placeholderTextColor={colors.textTertiary}
+                        autoFocus
+                        returnKeyType='done'
+                        onSubmitEditing={() => {
+                          if (!newColName.trim()) return
+                          const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
+                          setSelectedCollection(id)
+                          setShowCollectionPicker(false)
+                          setShowNewColForm(false)
+                          setNewColName('')
+                          setNewColColor(COLLECTION_COLORS[0])
+                          setNewColIcon(COLLECTION_ICONS[0])
+                        }}
+                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!newColName.trim()) return
+                          const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
+                          setSelectedCollection(id)
+                          setShowCollectionPicker(false)
+                          setShowNewColForm(false)
+                          setNewColName('')
+                          setNewColColor(COLLECTION_COLORS[0])
+                          setNewColIcon(COLLECTION_ICONS[0])
+                        }}
+                        disabled={!newColName.trim()}
+                        style={[
+                          styles.newColCreateBtn,
+                          { backgroundColor: colors.primary, opacity: newColName.trim() ? 1 : 0.4 },
+                        ]}>
+                        <Text style={[typography.labelMedium, { color: colors.textOnPrimary }]}>Create</Text>
                       </TouchableOpacity>
-                    ))}
+                    </View>
                   </View>
-                  <View style={styles.newColInputRow}>
-                    <View
-                      style={[styles.colDot, { backgroundColor: newColColor, width: 10, height: 10, borderRadius: 5 }]}
-                    />
-                    <TextInput
-                      style={[styles.newColInput, { color: colors.text, flex: 1 }]}
-                      value={newColName}
-                      onChangeText={setNewColName}
-                      placeholder='Collection name...'
-                      placeholderTextColor={colors.textTertiary}
-                      autoFocus
-                      returnKeyType='done'
-                      onSubmitEditing={() => {
-                        if (!newColName.trim()) return
-                        const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
-                        setSelectedCollection(id)
-                        setShowCollectionPicker(false)
-                        setShowNewColForm(false)
-                        setNewColName('')
-                        setNewColColor(COLLECTION_COLORS[0])
-                        setNewColIcon(COLLECTION_ICONS[0])
-                      }}
-                    />
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!newColName.trim()) return
-                        const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
-                        setSelectedCollection(id)
-                        setShowCollectionPicker(false)
-                        setShowNewColForm(false)
-                        setNewColName('')
-                        setNewColColor(COLLECTION_COLORS[0])
-                        setNewColIcon(COLLECTION_ICONS[0])
-                      }}
-                      disabled={!newColName.trim()}
-                      style={[
-                        styles.newColCreateBtn,
-                        { backgroundColor: colors.primary, opacity: newColName.trim() ? 1 : 0.4 },
-                      ]}>
-                      <Text style={[typography.labelMedium, { color: colors.textOnPrimary }]}>Create</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.collectionOption, { gap: spacing.sm }]}
-                  onPress={() => setShowNewColForm(true)}>
-                  <Ionicons name='add-circle-outline' size={18} color={colors.primary} />
-                  <Text style={[styles.pickerText, { color: colors.primary, flex: 0 }]}>New Collection</Text>
-                </TouchableOpacity>
-              )}
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.collectionOption, { gap: spacing.sm }]}
+                    onPress={() => setShowNewColForm(true)}>
+                    <Ionicons name='add-circle-outline' size={18} color={colors.primary} />
+                    <Text style={[styles.pickerText, { color: colors.primary, flex: 0 }]}>New Collection</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
             </View>
-          )}
+          </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Hidden WebView for metadata extraction */}
+      {webViewUrl && <MetadataWebView url={webViewUrl} onResult={handleWebViewResult} onError={handleWebViewError} />}
     </SafeAreaView>
   )
 }
@@ -575,37 +564,6 @@ const styles = StyleSheet.create({
     minHeight: 88,
     paddingTop: spacing.md,
   },
-  tagInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    height: 52,
-    overflow: 'hidden',
-  },
-  addTagBtn: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
-  },
-  tagChipText: {
-    ...typography.labelMedium,
-  },
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -620,11 +578,32 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
-  collectionList: {
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  modalSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    maxHeight: '75%',
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
     marginTop: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    overflow: 'hidden',
+    marginBottom: spacing.xs,
+  },
+  modalTitle: {
+    ...typography.titleMedium,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   collectionOption: {
     flexDirection: 'row',

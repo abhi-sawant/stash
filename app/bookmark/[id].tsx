@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAppColorScheme } from '@/hooks/use-app-color-scheme'
 import { useBookmarks } from '../../lib/context'
-import { getColors, getTagColor, radius, spacing, typography } from '../../lib/theme'
+import { getColors, radius, spacing, typography } from '../../lib/theme'
 import { extractDomain, formatDate, normalizeUrl } from '../../lib/utils'
 
 export default function EditBookmarkScreen() {
@@ -35,8 +35,6 @@ export default function EditBookmarkScreen() {
   const [url, setUrl] = useState(bookmark?.url ?? '')
   const [title, setTitle] = useState(bookmark?.title ?? '')
   const [subtitle, setSubtitle] = useState(bookmark?.subtitle ?? '')
-  const [tagInput, setTagInput] = useState('')
-  const [tags, setTags] = useState<string[]>(bookmark?.tags ?? [])
   const [selectedCollection, setSelectedCollection] = useState<string | null>(bookmark?.collectionId ?? null)
   const [imageUri, setImageUri] = useState<string | undefined>(bookmark?.imageUri)
   const [showCollectionPicker, setShowCollectionPicker] = useState(false)
@@ -46,16 +44,6 @@ export default function EditBookmarkScreen() {
     router.back()
     return null
   }
-
-  const addTag = () => {
-    const trimmed = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed])
-    }
-    setTagInput('')
-  }
-
-  const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag))
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -86,7 +74,6 @@ export default function EditBookmarkScreen() {
       url: normalized,
       title: title.trim() || normalized,
       subtitle: subtitle.trim(),
-      tags,
       collectionId: selectedCollection ?? undefined,
       imageUri,
     })
@@ -245,44 +232,6 @@ export default function EditBookmarkScreen() {
             textAlignVertical='top'
           />
 
-          {/* Tags */}
-          <Label text='Tags' colors={colors} />
-          <View style={[styles.tagInputRow, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-            <TextInput
-              style={[styles.input, { flex: 1, color: colors.text }]}
-              value={tagInput}
-              onChangeText={setTagInput}
-              placeholder='Add a tag...'
-              placeholderTextColor={colors.textTertiary}
-              autoCapitalize='none'
-              autoCorrect={false}
-              returnKeyType='done'
-              onSubmitEditing={addTag}
-            />
-            <TouchableOpacity
-              onPress={addTag}
-              disabled={!tagInput.trim()}
-              style={[styles.addTagBtn, { backgroundColor: colors.primary, opacity: tagInput.trim() ? 1 : 0.4 }]}>
-              <Ionicons name='add' size={20} color='#fff' />
-            </TouchableOpacity>
-          </View>
-          {tags.length > 0 && (
-            <View style={styles.tagsRow}>
-              {tags.map((tag) => {
-                const tc = getTagColor(tag)
-                return (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[styles.tagChip, { backgroundColor: tc.bg }]}
-                    onPress={() => removeTag(tag)}>
-                    <Text style={[styles.tagChipText, { color: tc.text }]}>#{tag}</Text>
-                    <Ionicons name='close' size={12} color={tc.text} />
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          )}
-
           {/* Collection */}
           <Label text='Collection' colors={colors} />
           <TouchableOpacity
@@ -436,35 +385,6 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
   },
   multiline: { minHeight: 88, paddingTop: spacing.md },
-  tagInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    height: 52,
-    overflow: 'hidden',
-  },
-  input: {
-    ...typography.bodyMedium,
-    paddingHorizontal: spacing.md,
-    height: '100%',
-  },
-  addTagBtn: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
-  },
-  tagChipText: { ...typography.labelMedium },
   pickerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   pickerText: { ...typography.bodyMedium, flex: 1 },
   colDot: { width: 12, height: 12, borderRadius: 6 },

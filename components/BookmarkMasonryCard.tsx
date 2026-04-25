@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useAppColorScheme } from '../hooks/use-app-color-scheme'
-import { getColors, getTagColor, radius, spacing, typography } from '../lib/theme'
+import { getColors, radius, spacing, typography } from '../lib/theme'
 import { Bookmark, Collection } from '../lib/types'
 import { extractDomain, formatDate } from '../lib/utils'
 import ContextMenu from './ContextMenu'
@@ -55,25 +55,6 @@ export default function BookmarkMasonryCard({ bookmark, collection, onPress, onE
           <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
             {bookmark.subtitle}
           </Text>
-        )}
-
-        {/* Tags */}
-        {bookmark.tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {bookmark.tags.slice(0, 2).map((tag) => {
-              const tc = getTagColor(tag)
-              return (
-                <View key={tag} style={[styles.tag, { backgroundColor: tc.bg }]}>
-                  <Text style={[styles.tagText, { color: tc.text }]}>{tag}</Text>
-                </View>
-              )
-            })}
-            {bookmark.tags.length > 2 && (
-              <View style={[styles.tag, { backgroundColor: colors.surfaceVariant }]}>
-                <Text style={[styles.tagText, { color: colors.textSecondary }]}>+{bookmark.tags.length - 2}</Text>
-              </View>
-            )}
-          </View>
         )}
 
         {/* Footer: collection badge + menu */}
@@ -143,20 +124,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.bodySmall,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 2,
-  },
-  tag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  tagText: {
-    ...typography.labelSmall,
   },
   footer: {
     flexDirection: 'row',

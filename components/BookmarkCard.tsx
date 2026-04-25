@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import React from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useAppColorScheme } from '../hooks/use-app-color-scheme'
-import { getColors, getTagColor, radius, spacing, typography } from '../lib/theme'
+import { getColors, radius, spacing, typography } from '../lib/theme'
 import { Bookmark, Collection } from '../lib/types'
 import { extractDomain, formatDate } from '../lib/utils'
 import ContextMenu from './ContextMenu'
@@ -49,19 +49,6 @@ export default function BookmarkCard({ bookmark, collection, onPress, onEdit, on
           </Text>
         )}
         <View style={styles.metaRow}>
-          {bookmark.tags.slice(0, 2).map((tag) => {
-            const tc = getTagColor(tag)
-            return (
-              <View key={tag} style={[styles.tag, { backgroundColor: tc.bg }]}>
-                <Text style={[styles.tagText, { color: tc.text }]}>{tag}</Text>
-              </View>
-            )
-          })}
-          {bookmark.tags.length > 2 && (
-            <View style={[styles.tag, { backgroundColor: colors.surfaceVariant }]}>
-              <Text style={[styles.tagText, { color: colors.textSecondary }]}>+{bookmark.tags.length - 2}</Text>
-            </View>
-          )}
           {collection && (
             <View style={[styles.collectionBadge, { backgroundColor: `${collection.color}22` }]}>
               <Ionicons name='folder' size={10} color={collection.color} />
@@ -131,14 +118,6 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 2,
     alignItems: 'center',
-  },
-  tag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  tagText: {
-    ...typography.labelSmall,
   },
   collectionBadge: {
     flexDirection: 'row',

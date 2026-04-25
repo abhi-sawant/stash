@@ -41,13 +41,9 @@ export default function CollectionDetailScreen() {
   const numColumns = getColumnCount(width)
 
   const collection = collections.find((c) => c.id === id)
-  // Also include child collections
-  const childCollectionIds = collections.filter((c) => c.parentId === id).map((c) => c.id)
-
-  const allIds = [id, ...childCollectionIds]
   const filtered = bookmarks.filter((b) => {
-    if (!allIds.includes(b.collectionId ?? '')) return false
-    if (query.trim()) return searchFilter(query, b.title, b.subtitle, b.url, ...b.tags)
+    if (b.collectionId !== id) return false
+    if (query.trim()) return searchFilter(query, b.title, b.subtitle, b.url)
     return true
   })
 
