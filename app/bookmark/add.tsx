@@ -4,19 +4,19 @@ import * as ImagePicker from 'expo-image-picker'
 import { router, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -143,6 +143,10 @@ export default function AddBookmarkScreen() {
       Alert.alert('URL Required', 'Please enter a valid URL')
       return
     }
+    if (!selectedCollection) {
+      Alert.alert('Collection Required', 'Please select a collection')
+      return
+    }
     setSaving(true)
     addBookmark({
       url: normalized,
@@ -168,8 +172,11 @@ export default function AddBookmarkScreen() {
           <Text style={[styles.headerTitle, { color: colors.text }]}>Add Bookmark</Text>
           <TouchableOpacity
             onPress={handleSave}
-            disabled={saving || !url.trim()}
-            style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: !url.trim() ? 0.5 : 1 }]}>
+            disabled={saving || !url.trim() || !selectedCollection}
+            style={[
+              styles.saveBtn,
+              { backgroundColor: colors.primary, opacity: !url.trim() || !selectedCollection ? 0.5 : 1 },
+            ]}>
             {saving ? (
               <ActivityIndicator size='small' color={colors.textOnPrimary} />
             ) : (
@@ -293,7 +300,7 @@ export default function AddBookmarkScreen() {
           />
 
           {/* Collection */}
-          <Label text='Collection (optional)' colors={colors} />
+          <Label text='Collection' colors={colors} />
           <TouchableOpacity
             style={[
               styles.fieldInput,
@@ -307,7 +314,7 @@ export default function AddBookmarkScreen() {
                 <Text style={[styles.pickerText, { color: colors.text }]}>{selectedCol.name}</Text>
               </>
             ) : (
-              <Text style={[styles.pickerText, { color: colors.textTertiary }]}>No collection</Text>
+              <Text style={[styles.pickerText, { color: colors.textTertiary }]}>Select a collection</Text>
             )}
             <Ionicons name='chevron-down' size={18} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -332,15 +339,6 @@ export default function AddBookmarkScreen() {
               <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
               <Text style={[styles.modalTitle, { color: colors.text }]}>Select Collection</Text>
               <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
-                <TouchableOpacity
-                  style={[styles.collectionOption, { borderBottomColor: colors.divider, borderBottomWidth: 1 }]}
-                  onPress={() => {
-                    setSelectedCollection(null)
-                    setShowCollectionPicker(false)
-                  }}>
-                  <Text style={[styles.pickerText, { color: colors.textSecondary }]}>None</Text>
-                  {!selectedCollection && <Ionicons name='checkmark' size={18} color={colors.primary} />}
-                </TouchableOpacity>
                 {collections.map((col) => (
                   <TouchableOpacity
                     key={col.id}
@@ -356,80 +354,126 @@ export default function AddBookmarkScreen() {
                   </TouchableOpacity>
                 ))}
 
-                {/* New collection form */}
-                {showNewColForm ? (
-                  <View style={[styles.newColForm, { borderTopColor: colors.divider }]}>
-                    <View style={styles.newColColorPicker}>
-                      {COLLECTION_COLORS.map((c) => (
-                        <TouchableOpacity
-                          key={c}
-                          style={[
-                            styles.newColSwatch,
-                            { backgroundColor: c },
-                            newColColor === c && { borderWidth: 2.5, borderColor: '#fff', opacity: 1 },
-                            newColColor !== c && { opacity: 0.65 },
-                          ]}
-                          onPress={() => setNewColColor(c)}>
-                          {newColColor === c && <Ionicons name='checkmark' size={12} color='#fff' />}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={styles.newColInputRow}>
-                      <View
-                        style={[
-                          styles.colDot,
-                          { backgroundColor: newColColor, width: 10, height: 10, borderRadius: 5 },
-                        ]}
-                      />
-                      <TextInput
-                        style={[styles.newColInput, { color: colors.text, flex: 1 }]}
-                        value={newColName}
-                        onChangeText={setNewColName}
-                        placeholder='Collection name...'
-                        placeholderTextColor={colors.textTertiary}
-                        autoFocus
-                        returnKeyType='done'
-                        onSubmitEditing={() => {
-                          if (!newColName.trim()) return
-                          const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
-                          setSelectedCollection(id)
-                          setShowCollectionPicker(false)
-                          setShowNewColForm(false)
-                          setNewColName('')
-                          setNewColColor(COLLECTION_COLORS[0])
-                          setNewColIcon(COLLECTION_ICONS[0])
-                        }}
-                      />
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (!newColName.trim()) return
-                          const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
-                          setSelectedCollection(id)
-                          setShowCollectionPicker(false)
-                          setShowNewColForm(false)
-                          setNewColName('')
-                          setNewColColor(COLLECTION_COLORS[0])
-                          setNewColIcon(COLLECTION_ICONS[0])
-                        }}
-                        disabled={!newColName.trim()}
-                        style={[
-                          styles.newColCreateBtn,
-                          { backgroundColor: colors.primary, opacity: newColName.trim() ? 1 : 0.4 },
-                        ]}>
-                        <Text style={[typography.labelMedium, { color: colors.textOnPrimary }]}>Create</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.collectionOption, { gap: spacing.sm }]}
-                    onPress={() => setShowNewColForm(true)}>
-                    <Ionicons name='add-circle-outline' size={18} color={colors.primary} />
-                    <Text style={[styles.pickerText, { color: colors.primary, flex: 0 }]}>New Collection</Text>
-                  </TouchableOpacity>
-                )}
+                {/* New collection button */}
+                <TouchableOpacity
+                  style={[styles.collectionOption, { gap: spacing.sm }]}
+                  onPress={() => setShowNewColForm(true)}>
+                  <Ionicons name='add-circle-outline' size={18} color={colors.primary} />
+                  <Text style={[styles.pickerText, { color: colors.primary, flex: 0 }]}>New Collection</Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
+          </Modal>
+
+          {/* New Collection full-form modal */}
+          <Modal
+            visible={showNewColForm}
+            animationType='slide'
+            presentationStyle='pageSheet'
+            onRequestClose={() => {
+              setShowNewColForm(false)
+              setNewColName('')
+              setNewColColor(COLLECTION_COLORS[0])
+              setNewColIcon(COLLECTION_ICONS[0])
+            }}>
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+              <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                {/* Header */}
+                <View style={[styles.header, { borderBottomColor: colors.divider }]}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowNewColForm(false)
+                      setNewColName('')
+                      setNewColColor(COLLECTION_COLORS[0])
+                      setNewColIcon(COLLECTION_ICONS[0])
+                    }}
+                    style={styles.headerBtn}>
+                    <Ionicons name='close' size={24} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={[styles.headerTitle, { color: colors.text }]}>New Collection</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!newColName.trim()) return
+                      const id = addCollection({ name: newColName.trim(), color: newColColor, icon: newColIcon })
+                      setSelectedCollection(id)
+                      setShowCollectionPicker(false)
+                      setShowNewColForm(false)
+                      setNewColName('')
+                      setNewColColor(COLLECTION_COLORS[0])
+                      setNewColIcon(COLLECTION_ICONS[0])
+                    }}
+                    disabled={!newColName.trim()}
+                    style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: newColName.trim() ? 1 : 0.5 }]}>
+                    <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>Create</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                  {/* Preview */}
+                  <View style={styles.newColPreviewRow}>
+                    <View style={[styles.newColPreviewIcon, { backgroundColor: `${newColColor}20` }]}>
+                      <Ionicons name={newColIcon as any} size={36} color={newColColor} />
+                    </View>
+                    <View style={[styles.newColColorBar, { backgroundColor: newColColor }]} />
+                  </View>
+
+                  {/* Name */}
+                  <Label text='Collection Name' colors={colors} />
+                  <TextInput
+                    style={[
+                      styles.fieldInput,
+                      { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text },
+                    ]}
+                    value={newColName}
+                    onChangeText={setNewColName}
+                    placeholder='e.g. Work, Reading, Recipes...'
+                    placeholderTextColor={colors.textTertiary}
+                    autoFocus
+                    returnKeyType='done'
+                  />
+
+                  {/* Color picker */}
+                  <Label text='Color' colors={colors} />
+                  <View style={styles.newColGrid}>
+                    {COLLECTION_COLORS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[
+                          styles.newColSwatchLg,
+                          { backgroundColor: c },
+                          newColColor === c && styles.newColSwatchSelected,
+                        ]}
+                        onPress={() => setNewColColor(c)}>
+                        {newColColor === c && <Ionicons name='checkmark' size={16} color='#fff' />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Icon picker */}
+                  <Label text='Icon' colors={colors} />
+                  <View style={styles.newColIconGrid}>
+                    {COLLECTION_ICONS.map((icon) => (
+                      <TouchableOpacity
+                        key={icon}
+                        style={[
+                          styles.newColIconSwatch,
+                          {
+                            backgroundColor: newColIcon === icon ? `${newColColor}20` : colors.surfaceVariant,
+                            borderColor: newColIcon === icon ? newColColor : colors.inputBorder,
+                          },
+                        ]}
+                        onPress={() => setNewColIcon(icon)}>
+                        <Ionicons
+                          name={icon as any}
+                          size={22}
+                          color={newColIcon === icon ? newColColor : colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </SafeAreaView>
           </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -612,38 +656,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  newColForm: {
-    borderTopWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+  newColPreviewRow: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
-  newColColorPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  newColSwatch: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  newColPreviewIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  newColInputRow: {
+  newColColorBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginTop: spacing.md,
+  },
+  newColGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.sm,
-    marginTop: spacing.xs,
   },
-  newColInput: {
-    ...typography.bodyMedium,
-    paddingVertical: spacing.sm,
-    flex: 1,
+  newColSwatchLg: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  newColCreateBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
+  newColSwatchSelected: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    transform: [{ scale: 1.15 }],
+  },
+  newColIconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  newColIconSwatch: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
 })
